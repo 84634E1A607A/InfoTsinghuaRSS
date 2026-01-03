@@ -51,3 +51,4 @@ Thumbs.db
 
 # Claude
 .claude/
+scripts/explore_output/

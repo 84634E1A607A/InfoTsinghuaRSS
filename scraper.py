@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
 import re
 import time
@@ -13,6 +11,8 @@ from enum import IntEnum
 from typing import Any
 
 import requests
+
+from parsers import get_parser
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +140,7 @@ class InfoTsinghuaScraper:
         return data.get("object", {}).get("dataList", [])
 
     def fetch_detail(self, xxid: str) -> dict[str, Any]:
-        """Fetch the detail page for an information item.
+        """Fetch the detail page for an information item and parse full content.
 
         Args:
             xxid: Information ID
@@ -150,7 +150,7 @@ class InfoTsinghuaScraper:
                 - title: Title of the information
                 - content: HTML content of the information
                 - department: Publishing department
-                - publish_time: Publish timestamp
+                - publish_time: Publish timestamp string
                 - category: Category name
         """
         if not self._session:
@@ -163,60 +163,81 @@ class InfoTsinghuaScraper:
         }
 
         self._rate_limit()
-        response = self._session.get(url, headers=headers)
+        response = self._session.get(url, headers=headers, allow_redirects=True)
         response.raise_for_status()
         html = response.text
 
-        # Extract title from h2 tag
-        title = ""
-        title_match = re.search(r'<h2[^>]*class="[^"]*detail-title[^"]*"[^>]*>(.*?)</h2>', html, re.DOTALL)
-        if title_match:
-            title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
+        # Get the final URL (after any redirects)
+        final_url = response.url
+
+        # Use the appropriate parser for this URL/HTML
+        parser = get_parser(final_url, html)
+
+        if parser:
+            # Use the parser to extract content
+            parsed = parser.parse(final_url, html)
+            return {
+                "title": parsed.get("title", ""),
+                "content": parsed.get("content", ""),
+                "department": parsed.get("department", ""),
+                "publish_time": parsed.get("publish_time", ""),
+                "category": "",  # Category not available in detail view
+            }
         else:
-            # Fallback: any h2 tag
-            title_match = re.search(r'<h2[^>]*>(.*?)</h2>', html, re.DOTALL)
+            # Fallback to basic extraction if no parser found
+            logger.warning(f"No parser found for {final_url}, using basic extraction")
+
+            # Extract title from h2 tag
+            title = ""
+            title_match = re.search(r'<h2[^>]*class="[^"]*detail-title[^"]*"[^>]*>(.*?)</h2>', html, re.DOTALL)
             if title_match:
                 title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
+            else:
+                # Fallback: any h2 tag
+                title_match = re.search(r'<h2[^>]*>(.*?)</h2>', html, re.DOTALL)
+                if title_match:
+                    title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
 
-        # Extract content from detail-content or content-body div
-        content = ""
-        content_match = re.search(r'<div[^>]*class="[^"]*detail-content[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
-        if not content_match:
-            content_match = re.search(r'<div[^>]*class="[^"]*content-body[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
-        if content_match:
-            content = content_match.group(0)
+            # Extract content from detail-content or content-body div
+            content = ""
+            content_match = re.search(r'<div[^>]*class="[^"]*detail-content[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
+            if not content_match:
+                content_match = re.search(r'<div[^>]*class="[^"]*content-body[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
+            if content_match:
+                content = content_match.group(0)
 
-        # Extract metadata from detail-meta div
-        department = ""
-        publish_time = ""
+            # Extract metadata from detail-meta div
+            department = ""
+            publish_time = ""
 
-        # Try to find department
-        dept_patterns = [
-            r'<span[^>]*>[^<]*发布单位[：:]\s*([^<]+)</span>',
-            r'<span[^>]*class="[^"]*department[^"]*"[^>]*>([^<]+)</span>',
-        ]
-        for pattern in dept_patterns:
-            match = re.search(pattern, html)
-            if match:
-                department = match.group(1).strip()
-                break
+            # Try to find department
+            dept_patterns = [
+                r'<span[^>]*>[^<]*发布单位[：:]\s*([^<]+)</span>',
+                r'<span[^>]*class="[^"]*department[^"]*"[^>]*>([^<]+)</span>',
+            ]
+            for pattern in dept_patterns:
+                match = re.search(pattern, html)
+                if match:
+                    department = match.group(1).strip()
+                    break
 
-        # Try to find publish time
-        time_patterns = [
-            r'<span[^>]*>[^<]*发布时间[：:]\s*([^<]+)</span>',
-        ]
-        for pattern in time_patterns:
-            match = re.search(pattern, html)
-            if match:
-                publish_time = match.group(1).strip()
-                break
+            # Try to find publish time
+            time_patterns = [
+                r'<span[^>]*>[^<]*发布时间[：:]\s*([^<]+)</span>',
+            ]
+            for pattern in time_patterns:
+                match = re.search(pattern, html)
+                if match:
+                    publish_time = match.group(1).strip()
+                    break
 
-        return {
-            "title": title,
-            "content": content,
-            "department": department,
-            "publish_time": publish_time,
-        }
+            return {
+                "title": title,
+                "content": content,
+                "department": department,
+                "publish_time": publish_time,
+                "category": "",
+            }
 
     def fetch_items(
         self,
@@ -252,14 +273,15 @@ class InfoTsinghuaScraper:
 
         return all_items
 
-    def upsert_article(self, item: dict[str, Any]) -> ArticleStateEnum:
+    def upsert_article(self, item: dict[str, Any], fetch_content: bool = True) -> ArticleStateEnum:
         """Insert or update an article from a list item.
 
         Args:
             item: List item dictionary from the API
+            fetch_content: Whether to fetch full article content (default: True)
 
         Returns:
-            True if the article was newly inserted, False if updated
+            ArticleStateEnum indicating if article was new, updated, or skipped
 
         Raises:
             ValueError: If required fields are missing from the item
@@ -272,15 +294,31 @@ class InfoTsinghuaScraper:
         if missing_fields:
             raise ValueError(f"Missing required fields: {missing_fields}")
 
+        # Build basic article from list item
         article = {
             "xxid": item["xxid"],
             "title": item["bt"],
-            "content": "",  # Content not available in list view
+            "content": "",
             "department": item.get("dwmc", ""),
             "category": item.get("lmmc", ""),
             "publish_time": item["fbsj"],
             "url": f"{self.BASE_URL}{item['url']}",
         }
+
+        # Fetch full content if requested
+        if fetch_content:
+            try:
+                detail = self.fetch_detail(item["xxid"])
+                # Override with detailed content
+                article.update({
+                    "title": detail.get("title", article["title"]),
+                    "content": detail.get("content", ""),
+                    "department": detail.get("department", article["department"]),
+                })
+                logger.debug(f"Fetched full content for {item['xxid']}")
+            except Exception as e:
+                logger.warning(f"Failed to fetch full content for {item['xxid']}: {e}")
+                # Continue with basic article info
 
         state = db_upsert(article)
         return ArticleStateEnum(state)

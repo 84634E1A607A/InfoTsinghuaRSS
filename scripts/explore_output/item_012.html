@@ -1,0 +1,613 @@
+<html xmlns="http://www.w3.org/1999/xhtml"><head>
+  <title>清华大学学生职业发展指导中心</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <style type="text/css">
+    table th{width:0px;white-space: nowrap;}
+    p{line-height:200%;}
+	._button{
+		background: #e8714d none repeat scroll 0 0;
+    	border: 0 none;
+    	color: #fff;
+    	font-size: 12px;
+    	padding: 3px 8px;
+    	cursor:pointer;
+	}
+	
+	.white_content {  
+		display: none;  
+		position: absolute;  
+		top: 25%;  
+		left: 45%;  
+		padding: 16px;  
+		border: 5px solid orange;  
+		background-color: white;  
+		z-index:1002;  
+		overflow: auto;  
+	}
+  </style>
+</head>
+<body class="emploer inner">
+<!-- 引入横条 菜单 -->
+   
+
+<!-- 门户页面linked style -->
+<link href="/xsglxt/res/newWebsite/css/reset.css" rel="stylesheet" type="text/css">
+<link href="/xsglxt/res/newWebsite/font/css/fonts.css" rel="stylesheet" type="text/css">
+<link href="/xsglxt/res/newWebsite/css/css.css" rel="stylesheet" type="text/css">
+<script src="/xsglxt/res/newWebsite/js/jquery-1.8.3.min.js" type="text/javascript"></script>
+<script src="/xsglxt/res/newWebsite/js/comm.js" type="text/javascript"></script>
+<link rel="stylesheet" type="text/css" href="/xsglxt/res/newWebsite/css/slick.css">
+<script type="text/javascript" src="/xsglxt/res/newWebsite/js/slick.min.js"></script>
+<link rel="stylesheet" href="/xsglxt/res/newWebsite/css/selectric.css">
+<script src="/xsglxt/res/newWebsite/js/jquery.selectric.min.js"></script>
+<script src="/xsglxt/res/newWebsite/js/placeholder.js"></script>
+<link rel="stylesheet" type="text/css" href="/xsglxt/res/newWebsite/css/jquery.qtip.min.css">
+<script type="text/javascript" src="/xsglxt/res/newWebsite/js/jquery.qtip.min.js"></script>
+
+<!--banner导航以及搜索logo开始 -->
+<div class="searchwraper">
+    	<div class="search clearfix">
+				    <script> 
+						function search() {
+						 var value = document.frm.word1.value;
+						 value='site:career.tsinghua.edu.cn ' + value;
+						 document.frm.word.value = value;
+						 
+						}
+						function doLoginSxbl(){
+						alert("只有登录后的学生用户才能进行此操作!");
+						}
+						function doOperateSxbl(arg){
+						var url = '/xsglxt/f/jyxt/dwtz/studentIndex';
+						window.open(url,'newwindow2');
+						}
+						function doLoginJygl(){
+						alert("只有登录后的教师用户才能进行此操作!");
+						}
+						function doOperateJygl(arg){
+						var url = '/xsglxt/f/jyxt/zpxx/goToMain';
+						window.open(url,'newwindow2');
+						}
+						function doLoginGZ(){
+						alert("只有登录后的雇主用户才能进行此操作!");
+						}
+						function doOperateGZ(arg){
+						var url = '/xsglxt/f/jyxt/jydw/companyIndex';
+						window.open(url,'newwindow2');
+						}
+					</script>
+					<form name="frm" action="http://www.baidu.com/baidu" target="_blank" onsubmit="search();">
+					<input name="tn" type="hidden" value="baidu">
+					<input name="word" type="hidden">
+					<input type="text" name="word1" placeholder="站内搜索"><button><i class="icon-search"></i></button>
+					</form>
+        </div>
+</div>
+<div class="head">
+	<div class="menutop"></div>
+	<div class="nav clearfix">
+        <div class="right u">
+        	<a href="javascript:;" class="icon-search" id="searchicon"></a>
+            <a href="/xsglxt/dwlogin" class="b"><span href=""><i class="icon-user"></i></span>用户登录</a>
+        </div>
+        <div class="smenu" id="smenu"><i class="icon-bars"></i></div>
+        <ul class="right menu">
+        	<li><a href="https://career.tsinghua.edu.cn/index.htm">首页</a></li>
+        	<li>
+            	<a href="https://career.tsinghua.edu.cn/xs.htm"><span class="g">学生</span><i class="icon-angle-down"></i></a>
+                <ul>
+                	<i><em></em></i>
+                	<li><a href="http://career.cic.tsinghua.edu.cn/xsglxt/f/jyxt/anony/xxfb">招聘信息</a></li>
+                    <li><a href="https://career.tsinghua.edu.cn/xs/zyfd.htm">职业辅导</a></li>
+                    
+					<li><a href="#" onclick="doLoginSxbl()">手续办理</a></li>	 		
+					
+                    <li><a href="https://career.tsinghua.edu.cn/xs/dmtzx.htm">多媒体中心</a></li>	
+                </ul>
+            </li>
+            <li>
+            	<a href="https://career.tsinghua.edu.cn/js.htm"><span class="l">教师</span><i class="icon-angle-down"></i></a>
+                 <ul>
+                	<i><em></em></i>
+                	<li><a href="https://career.tsinghua.edu.cn/js/tzgg.htm">通知公告</a></li>
+                    <li><a href="https://career.tsinghua.edu.cn/js/yxjl.htm">院系交流</a></li>    
+                    
+					<li><a href="#" onclick="doLoginJygl()">就业管理</a></li> 	 		
+					
+                    <li><a href="https://career.tsinghua.edu.cn/js/szpx.htm">师资培训</a></li> 
+                 </ul>
+            </li>
+            <li>
+            	<a href="https://career.tsinghua.edu.cn/gz.htm"><span class="h">雇主</span><i class="icon-angle-down"></i></a>
+                 <ul>
+                	<i><em></em></i>
+                	
+                    	<li><a href="#" onclick="doLoginGZ()">信息发布</a></li> 	
+                    	<li><a href="#" onclick="doLoginGZ()">招聘预定</a></li> 	 		
+                    
+                    <li><a href="https://career.tsinghua.edu.cn/gz/sysl.htm">生源速览</a></li> 
+                    <li><a href="https://career.tsinghua.edu.cn/gz/yxjs.htm">院系介绍</a></li> 
+                 </ul>
+            </li>
+            <li>
+            	<a href="https://career.tsinghua.edu.cn/xy.htm"><span class="p">校友</span><i class="icon-angle-down"></i></a>
+                 <ul>
+                	<i><em></em></i>
+                	<li><a href="https://career.tsinghua.edu.cn/xy/hdxx.htm">活动信息</a></li> 
+                    <li><a href="https://career.tsinghua.edu.cn/xy/xytx.htm">校友通讯</a></li> 
+                    <li><a href="https://career.tsinghua.edu.cn/xy/zyfz.htm">职业发展</a></li> 
+                    <li><a href="https://career.tsinghua.edu.cn/xy/gzjh.htm">工作机会</a></li>        
+            	</ul>
+            </li>
+            <li>
+            	<a href="https://career.tsinghua.edu.cn/gywm.htm">关于我们<i class="icon-angle-down"></i></a>
+                 <ul>
+                	<i><em></em></i>
+                	<li><a href="https://career.tsinghua.edu.cn/gywm/zxjs.htm">中心介绍</a></li> 
+                    <li><a href="https://career.tsinghua.edu.cn/gywm/zzjg.htm">组织机构</a></li> 
+                    <li><a href="https://career.tsinghua.edu.cn/gywm/lxfs.htm">联系方式</a></li> 
+            	</ul>
+            </li>
+        </ul>
+        <a href="/xsglxt/dwlogin" class="logo"><img src="/xsglxt/res/newWebsite/images/logo.png"></a>
+    </div>
+</div><!--banner导航以及搜索logo结束 -->
+   <!-- 核心内容 -->
+   <div class="head-home">
+    	<ul class="clearfix">
+        	<li class="current"> <a href="https://career.tsinghua.edu.cn/index.htm">首页</a></li>
+            <li>  &gt; </li>
+            <li>
+            	
+       			<a href="/xsglxt/f/jyxt/anony/xxfb?type=ZPXX" class="navigation_style">招聘信息</a>
+       		</li>
+       		<li>  &gt; </li>
+       		<li>
+       			
+       			内容
+       		</li>
+        </ul>
+    </div>
+    <div class="banner">
+    	<div class="banner-main">
+        	<h1>晓教育晓培优2026校园招聘清北招聘火热进行中</h1>
+        	<div class="clearfix"><div class="h1ass">更新时间： 2026.01.03　|　浏览次数：67　|　<span>二维码 <i class="icon-qrcode"></i> <i class="icon-sort-down"></i> <div class="socialwraper"><i><em></em></i><img src="/xsglxt/res/newWebsite/images/weixin.jpg"></div></span></div><div class="rightv"><div class="bshare-custom"><a title="分享到QQ空间" class="bshare-qzone"></a><a title="分享到新浪微博" class="bshare-sinaminiblog"></a><a title="分享到人人网" class="bshare-renren"></a><a title="分享到腾讯微博" class="bshare-qqmb"></a><a title="分享到豆瓣" class="bshare-douban"></a><a title="更多平台" class="bshare-more bshare-more-icon more-style-addthis"></a><span class="BSHARE_COUNT bshare-share-count">0</span>|<img style="width:17px;height:17px;" src="/xsglxt/res/images/sc.png"><span style="color:#2d64b3;cursor:pointer;" onmouseover="style='color:#ff7300;cursor:pointer;'" onmouseout="style='color:#2d64b3;cursor:pointer;'" onclick="doSc();">收藏</span></div><script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/buttonLite.js#style=-1&amp;uuid=&amp;pophcol=2&amp;lang=zh"></script><script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/bshareC0.js"></script></div></div>
+		</div>
+    </div>
+               	
+ <div class="content teacher">
+	<div class="list-1 clearfix stu-list-1">
+    	<div class="sideleft left">              		
+               		<table id="comTab" style="width:100%;">
+              				<tbody><tr>
+              					<th style="width:10%;">公司名称：</th><td style="width:40%;">广州晓晓传播科技有限公司</td><th style="width:10%;">公司性质：</th><td style="width:40%;">民营企业</td>
+              				</tr>
+              				<tr>
+              					<th>公司规模：</th><td>500~1000人</td><th>公司行业：</th><td>教育</td>
+              				</tr>
+              				<tr>
+              					<td colspan="4">&nbsp;</td>
+              				</tr>
+              				<!-- 职位信息 -->
+              				<tr>
+              					<th>职位性质：</th><td>全职</td><th>职位类别：</th><td>教学人员</td>
+              				</tr>
+              				<tr>
+              					<th>学历要求：</th><td>本科,硕士</td><th>招聘人数：</th><td>20</td>
+              				</tr>
+              				<tr>
+              					<th>工作地点：</th><td colspan="3">广东省广州市</td>
+              					
+              				</tr>
+              				<tr>
+              				<th>职位标签：</th><td></td>
+              				</tr>
+               		</tbody></table>
+               		<div align="center">
+               			<input type="button" class="_button" value="订阅该单位职位信息" onclick="doSaveDy();">&nbsp;&nbsp;&nbsp;&nbsp;
+               			
+							<input type="button" class="_button" value="投递简历【截止时间：2026-06-30】" onclick="doTdjl();">
+						
+						
+						
+               		</div>
+               		<br>
+               		<h2 class="company-headline">职位描述</h2>
+               	    <br>
+               	    <!-- 职位描述 -->
+				    
+
+	<title></title>
+
+
+<h1><img src="data:image/png;base64,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" style="height:59px; width:67px">&nbsp;&nbsp;<strong>“晓”方向，培优才——晓培优202</strong><strong>6</strong><strong>届校园招聘</strong></h1>
+
+<p><strong>筑梦未来，破晓先行。</strong>&nbsp;</p>
+
+<h2><strong>【晓の初识】</strong></h2>
+
+<p><strong>晓教育集团</strong>于2003年步入教育行业，已成为多品牌并驾齐驱的中国大型综合性教育科技公司。晓教育以立德树人为出发点，以“引发成长动力”为使命布局业务，<strong>旗下拥有晓培优、星火教育、星火素质中心、星火网校等多个子品牌。</strong></p>
+
+<p><strong>晓培优事业部于2016年正式成立，专注学生素养思维培养。</strong></p>
+
+<p>晓培优已相继在广州、东莞、南宁、深圳成立分校。依托优质师资与产品教学的多年沉淀，晓培优坚守教育初心，助力孩子终身成长，为社会创造更多价值。</p>
+
+<h2><strong>【晓の邀请】</strong></h2>
+
+<p>为教育者，非为已往；非为现在，而专为将来。教育，是国之大计、党之大计。</p>
+
+<p>未来的晓家人：我们期待与你同行，顺着破晓的方向，去看云与光铺展大地的模样。</p>
+
+<p>亲爱的晓伙伴：世间因少年挺身向前更加瑰丽，青年莫负时代，世界等你开场！</p>
+
+<p>&nbsp;</p>
+
+<h2><strong>【薪酬福利】</strong></h2>
+
+<p><strong>一、薪酬</strong></p>
+
+<p><strong>清北教师：</strong></p>
+
+<p><strong>首年综合年薪：</strong><strong>25</strong><strong>W</strong><strong>-</strong><strong>30</strong><strong>W</strong><strong>（</strong><strong>签署保底协议</strong><strong>）</strong></p>
+
+<p><strong>竞赛教练综合年薪：40-60W（奖项高者另议）注必须有竞赛经历</strong></p>
+
+<p>注：教师薪酬=底薪+课时费；课时费每年最多提供四次提升机会。&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p><strong>二、福利（入职即享）</strong></p>
+
+<p>五险一金、年度旅游、法定假期、带薪年假、节日福利、年度体检、员工活动等。</p>
+
+<h2><strong>【岗位需求】</strong></h2>
+
+<table align="center" border="1" cellspacing="0" style="width:100%">
+	<tbody>
+		<tr>
+			<td style="width: 38.12%;">
+			<p><strong><a name="_Hlk521418056">素质</a></strong><strong>类班课</strong><strong>教师</strong><strong>（</strong><strong>E人看这边！）</strong></p>
+			</td>
+			<td rowspan="2" style="width: 61.86%;">
+			<p><strong>小学创新</strong><strong>思维素养、</strong><strong>小学剑桥英语、</strong><strong>初高中数学、</strong><strong>初高中物理</strong><strong>、</strong><strong>初高中化学</strong></p>
+			</td>
+		</tr>
+		<tr>
+			<td style="width: 38.12%;">
+			<p><strong>素质个性化教师（I人超适合！）</strong></p>
+			</td>
+		</tr>
+		<tr>
+			<td style="width: 38.12%;">
+			<p><strong>工作城市</strong></p>
+			</td>
+			<td style="width: 61.86%;">
+			<p><strong>广州、深圳</strong><strong>、</strong><strong>东莞、南宁</strong></p>
+			</td>
+		</tr>
+	</tbody>
+</table>
+
+<div>&nbsp;</div>
+
+<p>&nbsp;</p>
+
+<p><strong>注：双通道晋升管理型/专业型教师岗</strong></p>
+
+<h2><strong>【岗位职责】</strong></h2>
+
+<p>(1) 完成小班课或个性化一对一面授教学工作，保证教学质量</p>
+
+<p>(2) 课后与家长、孩子进行反馈沟通，促进家校合作，提升教学效果</p>
+
+<p>(3) 参与本学科相关教研活动，促进产品及教学升级</p>
+
+<p>(4) 设计、组织、举办学科活动，协助分校招生，打造分校口碑</p>
+
+<h2><strong>【应聘要求】</strong></h2>
+
+<p>(1) 专业不限，本科及以上学历</p>
+
+<p>(2) 沟通能力强，普通话标准，具有团队合作精神</p>
+
+<p>(3) 基础知识扎实，有责任心，愿意投身教育事业</p>
+
+<h1><strong>【发展通道】</strong></h1>
+
+<p>双通道结合发展</p>
+
+<p>1. 教师线：新教师—核心教师—明星教师—金牌教师</p>
+
+<p>2. 管理线：专员—副主管—主管—经理—分校校长</p>
+
+<h1><strong>【应聘方式】</strong></h1>
+
+<p>1、手机号添加微信，直通hr建联，拒绝信息差！</p>
+
+<p>&nbsp;</p>
+
+<p><strong>面试流程：</strong><strong>两轮面试，锁定核心骨干教师</strong></p>
+
+<p>&nbsp;</p>
+
+<p><strong>初试+试讲</strong></p>
+
+<p><strong>复试——offer面谈——签约录用</strong></p>
+
+<h1><strong>【联系我们】</strong></h1>
+
+<p>微信电话同号：15101180567（闫老师）</p>
+
+<p>&nbsp;</p>
+
+<p><strong>少年有梦不应止于心动，更要付诸行动，如果你也热爱教育事业，如果你也不甘平凡：</strong></p>
+
+<p><strong>少年，加入我们，一同奔赴属于我们的星辰大海！</strong></p>
+
+
+
+				    <table>
+				    
+				    </table>
+				    <br>
+               		<h2 class="company-headline">单位简介</h2>
+               	    <br><!--
+				    &lt;html&gt;
+&lt;head&gt;
+	&lt;title&gt;&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div&gt;
+&lt;p&gt;晓教育集团于2003年步入教育行业，经过十余年发展，已成为多品牌，线上、线下并驾齐驱中国大型综合性教育科技公司。晓教育全面贯彻党的教育方针，以立德树人为出发点，以&amp;ldquo;引发成长动力&amp;rdquo;为使命布局业务，旗下拥有晓培优、星火素质成长、星火教育、星火网校等多个子品牌。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;晓培优于2016年正式成立，定位于高端培优教育品牌&lt;/strong&gt;。已相继在广州、中山、东莞、南宁、重庆成立分校。根据国家的指引，依托多年教研教学沉淀，晓培优成立素质中心，专注6到12岁儿童素养思维培养，专注做好一件事，晓培优坚守教育初心，助力培养孩子终身成长的力量，为社会带来更多价值。&lt;/p&gt;
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+
+				    -->
+				    
+
+	<title></title>
+
+
+<div>
+<p>晓教育集团于2003年步入教育行业，经过十余年发展，已成为多品牌，线上、线下并驾齐驱中国大型综合性教育科技公司。晓教育全面贯彻党的教育方针，以立德树人为出发点，以“引发成长动力”为使命布局业务，旗下拥有晓培优、星火素质成长、星火教育、星火网校等多个子品牌。</p>
+
+<p><strong>晓培优于2016年正式成立，定位于高端培优教育品牌</strong>。已相继在广州、中山、东莞、南宁、重庆成立分校。根据国家的指引，依托多年教研教学沉淀，晓培优成立素质中心，专注6到12岁儿童素养思维培养，专注做好一件事，晓培优坚守教育初心，助力培养孩子终身成长的力量，为社会带来更多价值。</p>
+</div>
+
+
+
+				    <br>
+               		<h2 class="company-headline">联系方式</h2>
+               	    <br>
+				    <table id="comTab" style="width:100%;">
+           				<tbody><tr>
+           					<th style="width:10%;">联系电话：</th><td style="width:40%;">15101180567</td>
+           					<th style="width:10%;">公司传真：</th><td style="width:40%;"></td>
+            			</tr>
+           				<tr>
+           					<th>公司主页：</th><td>http://www.xiao100.com/</td>
+           					<th>招聘邮箱：</th><td>yanxinfeng@xiao100.com</td>
+           				</tr>
+           				<tr>
+           					<th>公司地址：</th><td colspan="3">广州市天河区天河东路155号晓教育大楼</td>
+           				</tr>
+            		</tbody></table>
+				</div>
+            <!--右侧相关新闻开始 -->
+            <div class="sideright clearfix right">
+            <div class="column-2">
+            	<div class="video">
+						
+			        	
+			    	</div>
+				</div>
+		 	</div>
+       </div>
+     </div>
+    <div id="light" class="white_content"> 
+    	<form id="commForm" method="post" novalidate="">
+			<input type="hidden" name="zpxxid" value="536377042">
+			<input type="hidden" id="wydz" name="wydz" value="">
+			<table align="center" style="margin-top:10px;">
+				<tbody><tr>
+					<td style="height:40px;" align="right"><label>常用标签</label></td>
+					<td style="height:40px;"><span style="cursor:pointer;border:1px solid #ff7300;margin-left:10px;padding:5px 5px 5px 5px;" onclick="doHtml('很喜欢');">很喜欢</span><span style="cursor:pointer;border:1px solid #ff7300;margin-left:10px;padding:5px 5px 5px 5px;" onclick="doHtml('感兴趣');">感兴趣</span><span style="cursor:pointer;border:1px solid #ff7300;margin-left:10px;padding:5px 5px 5px 5px;" onclick="doHtml('待会看');">待会看</span></td>
+				</tr>
+				<tr>
+					<td><label>备注</label></td>
+					<td><textarea style="vertical-align:middle;" id="bq" name="bq" rows="4" cols="30"></textarea></td>
+				</tr>
+				<tr>
+					<td colspan="2" align="center">
+						<input type="button" id="saveBtn" class="_button" value="保存" onclick="doSave();">
+						<input type="button" class="_button" value="取消" onclick="doBack();">
+					</td>
+				</tr>
+			</tbody></table>
+		</form>
+    </div> 
+    <input type="hidden" id="tdjl_flag" value="">	
+    <div id="light_tdjl" class="white_content" style="top: 75%;left: 25%;"> 
+		<input type="hidden" id="zpxxid" value="536377042">					
+		<table class="table table-bordered">
+			<tbody><tr>
+				<td style="text-align: right;">
+					请选择简历：
+				</td>
+				<td style="text-align: left;">
+					<select id="jlmcSel" class="chosen-select">
+						
+					</select>									 		
+				</td>
+			</tr>	
+			<tr>
+				<td colspan="2">
+					&nbsp;
+				</td>
+			</tr>	
+			<tr>
+				<td colspan="2" align="center">
+					<input type="button" class="_button" value="投递" onclick="doSaveTdjl();">
+					<input type="button" class="_button" value="取消" onclick="doBackTdjl();">
+				</td>
+			</tr>		
+		</tbody></table>	
+    </div> 
+    <div id="light_tdjl_without" class="white_content" style="top: 65%;left: 35%;"> 
+		<table class="table table-bordered">
+			<tbody><tr>
+				<td>
+					你还没有任何简历可投递！
+				</td>
+			</tr>	
+			<tr>
+				<td align="center">
+					<input type="button" class="_button" value="关闭" onclick="doCloseTdjlWithout();">
+				</td>
+			</tr>		
+		</tbody></table>	
+    </div> 
+    
+<div class="foot">
+	<div class="footer-1">
+    	<a href=""><img src="/xsglxt/res/newWebsite/images/logo-foot.png"></a>
+        <div class="copy clearfix">
+        	<div class="left">
+            	<h5>联系方式</h5>
+                      <p>清华大学学生职业发展指导中心<br> 
+                          电话：86-10-62784625 <br> 
+                          传真：86-10-62794519(自动接收) <br> 
+                          地址：北京市海淀区清华大学<br> 
+                          　　　学生职业发展指导中心办公楼<br> 
+                          邮编：100084
+                      </p>
+            </div>
+            <div class="left">
+            	<h5>用人单位服务热线</h5>
+                      <p>上午：8:30-12:00<br> 
+                          下午：13:30-16:30<br> 
+                          （节假日除外）
+                      </p>
+                      <p>电话（招聘会预订）86-10-62773164<br> 
+                          电话（招聘信息发布）86-10-62796373<br> 
+                          传真：86-10-62796370(自动接收)<br> 
+                          邮箱：scc@tsinghua.edu.cn
+                      </p>
+            </div>
+            <div class="left">
+            	<h5>就业手续办理及政策咨询</h5>
+                      <p>上午 8:30-12:00<br> 
+                          下午13:30-16:30<br> 
+                          （节假日除外）<br> 
+                          周五15：30以后为中心内部学习时间，不办理就业手续<br> 
+                      </p>
+                      <p>电话：86-10-62783128<br> 
+                          邮箱：jyzx@tsinghua.edu.cn
+                      </p>
+            </div>
+        </div>
+    </div>
+    <div class="footer-2 clearfix">
+        <div>
+            <span class="left">清华大学学生职业发展指导中心  版权所有</span>
+            <span class="right">总点击:19,222,748(今日:1,057)</span>
+        </div>
+    </div>
+</div>
+   <!-- 引入 js 文件  -->
+   <script type="text/jscript" src="/xsglxt/res/jyxt/js/jquery-1.4.3.min.js"></script>
+<script type="text/javascript" src="/xsglxt/res/jyxt/js/navigator.js"></script>
+<script type="text/javascript" src="/xsglxt/res/jyxt/js/ie6guide.js"></script>
+<script type="text/javascript" src="/xsglxt/res/jyxt/js/index.js"></script>
+<script type="text/javascript" src="/xsglxt/res/jyxt/js/tipContext.js"></script>
+<script type="text/javascript" src="/xsglxt/res/jyxt/js/jquery-ui-1.9.2.custom.min.js"></script>
+<script type="text/javascript" src="/xsglxt/res/jyxt/js/datepicker-lan.js"></script>
+<script src="/xsglxt/res/jyxt/js/qrcode.js" type="text/javascript"></script>
+<script src="/xsglxt/res/jyxt/js/qrcode-auto.js" type="text/javascript"></script>
+
+<script type="text/javascript" src="/xsglxt/res/jyxt/js/slider.js"></script>
+<script type="text/javascript">
+	//手续办理 、就业管理 控制登录跳转
+	$(function(){
+		$("#sxbl,#jygl").each(function(){
+			var xm='';
+			if(xm){
+				this.href=this.aref;
+			}
+		});
+	})
+</script>
+   <script type="text/javascript">
+    $(function(){
+		
+	}); 
+    function doHtml(value){
+		$("#bq").html(value);
+	}
+    function doBack(){
+    	$('#light').hide();
+    }
+	function doSave() {
+		var wydz=window.location;
+		$("#wydz").attr("value", wydz);
+		$("#saveBtn").attr("disabled", true);
+		$.ajax({
+	    	type : 'POST', 
+			url : "/xsglxt/b/jyxt/jy_zp_scj/saveAdd",
+			data : $("#commForm").serialize(),
+			success : function(r) {
+				alert(r.msg);
+				$('#light').hide();
+			}
+		})
+	}
+    function doSc(){
+    	
+    		alert("请先登录，再收藏！");
+    	
+    	
+    }
+    function doSaveDy(){
+    	
+			alert("请先登录，再订阅！");
+		
+		
+    }
+    function doTdjl(){
+		
+			alert("请先登录，再投递简历！");
+		
+		
+    }
+    function doSaveTdjl(){
+	    $.ajax({
+			"type" : 'POST', 
+			"url" : "/xsglxt/b/jyxt/jy_jl_zwsqb/saveAddForXs",
+			"dataType" : "json",
+			"data" : {
+				zpxxid : $("#zpxxid").val(),
+				jbxxid : $("#jlmcSel").val()
+			},
+			"success" : function(data) {
+				var msg = data.msg;
+				if(msg=="申请成功!"){
+					msg = "投递成功!";
+				}
+				alert(msg);
+				$('#light_tdjl').hide();
+			}
+		});
+    }
+    function doBackTdjl(){
+		$('#light_tdjl').hide();
+    }
+    function doCloseTdjlWithout(){
+		$('#light_tdjl_without').hide();
+    }
+   </script>
+</body></html>
