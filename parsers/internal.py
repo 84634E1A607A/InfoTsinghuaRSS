@@ -108,7 +108,7 @@ class InternalParser(BaseParser):
 
                 # Extract title
                 if "bt" in xx_dto:
-                    result["title"] = xx_dto["bt"]
+                    result["title"] = unescape(xx_dto["bt"])
 
                 # Extract content (HTML in 'nr' field)
                 if "nr" in xx_dto:

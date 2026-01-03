@@ -35,7 +35,7 @@ MAX_PAGES_PER_RUN = 30 # Test: 1 page
 MIN_SCRAPE_INTERVAL = 90 # Test: 1.5 minutes
 
 # Maximum articles to return in RSS feed
-MAX_RSS_ITEMS = 500
+MAX_RSS_ITEMS = 100
 
 
 scheduler = AsyncIOScheduler()
