@@ -30,7 +30,9 @@ class FallbackParser(BaseParser):
         """
         return True
 
-    def parse(self, url: str, html: str, session: Any = None, csrf_token: str = "") -> dict[str, Any]:
+    def parse(
+        self, url: str, html: str, session: Any = None, csrf_token: str = ""
+    ) -> dict[str, Any]:
         """Attempt basic content extraction.
 
         Args:

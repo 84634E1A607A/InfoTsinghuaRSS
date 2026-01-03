@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from bs4 import BeautifulSoup
-
 from config import LIBRARY_ENCODINGS, USER_AGENT
 from parsers.base import BaseParser
 
@@ -29,7 +27,9 @@ class LibraryParser(BaseParser):
         """
         return "lib.tsinghua.edu.cn" in url
 
-    def parse(self, url: str, html: str, session: Any = None, csrf_token: str = "") -> dict[str, Any]:
+    def parse(
+        self, url: str, html: str, session: Any = None, csrf_token: str = ""
+    ) -> dict[str, Any]:
         """Parse library page content.
 
         Args:

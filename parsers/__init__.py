@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import logging
 
+from parsers.base import BaseParser
 from parsers.career_cic import CareerCicParser
 from parsers.fallback import FallbackParser
 from parsers.internal import InternalParser
 from parsers.library import LibraryParser
 from parsers.myhome import MyhomeParser
 from parsers.simple_table import SimpleTableParser
-from parsers.base import BaseParser
 
 logger = logging.getLogger(__name__)
 

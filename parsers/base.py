@@ -27,7 +27,9 @@ class BaseParser(ABC):
         pass
 
     @abstractmethod
-    def parse(self, url: str, html: str, session: Any = None, csrf_token: str = "") -> dict[str, Any]:
+    def parse(
+        self, url: str, html: str, session: Any = None, csrf_token: str = ""
+    ) -> dict[str, Any]:
         """Parse content from the given URL and HTML.
 
         Args:
@@ -82,9 +84,9 @@ class BaseParser(ABC):
             Cleaned text string
         """
         # Get text and clean up whitespace
-        text = element.get_text(separator=' ', strip=True)
+        text = element.get_text(separator=" ", strip=True)
 
         # Clean up extra whitespace
-        text = re.sub(r'\s+', ' ', text)
+        text = re.sub(r"\s+", " ", text)
 
         return text.strip()

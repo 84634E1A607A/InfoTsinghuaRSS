@@ -8,7 +8,6 @@ from html import unescape
 from typing import Any
 
 import requests
-from bs4 import Tag
 
 from config import USER_AGENT
 from parsers.base import BaseParser
@@ -33,7 +32,9 @@ class InternalParser(BaseParser):
         is_internal = "info.tsinghua.edu.cn" in url and "/template/detail" in url
         return is_internal
 
-    def parse(self, url: str, html: str, session: requests.Session | None = None, csrf_token: str = "") -> dict[str, Any]:
+    def parse(
+        self, url: str, html: str, session: requests.Session | None = None, csrf_token: str = ""
+    ) -> dict[str, Any]:
         """Parse internal page content.
 
         Args:
@@ -54,7 +55,7 @@ class InternalParser(BaseParser):
         }
 
         # Extract xxid from URL
-        xxid_match = re.search(r'xxid=([a-f0-9]+)', url)
+        xxid_match = re.search(r"xxid=([a-f0-9]+)", url)
         if not xxid_match:
             logger.warning(f"Could not extract xxid from {url}")
             return self._parse_static(html, result)
@@ -66,7 +67,9 @@ class InternalParser(BaseParser):
 
         if not token:
             # Extract CSRF token from meta tag
-            csrf_match = re.search(r'<meta\s+name=["\']_csrf["\']\s+content=["\']([a-z0-9\-]+)["\']', html)
+            csrf_match = re.search(
+                r'<meta\s+name=["\']_csrf["\']\s+content=["\']([a-z0-9\-]+)["\']', html
+            )
             if csrf_match:
                 token = csrf_match.group(1)
 

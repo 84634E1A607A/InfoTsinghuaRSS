@@ -7,6 +7,7 @@ import sys
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from auth_db import init_auth_db
 from config import (
     GITLAB_CLIENT_ID,
     GITLAB_CLIENT_SECRET,
@@ -15,7 +16,6 @@ from config import (
     SESSION_SECRET,
 )
 from database import get_db_connection
-from auth_db import init_auth_db, count_user_tokens
 
 
 def check_config() -> bool:
@@ -65,7 +65,9 @@ def check_database() -> bool:
 
         with get_db_connection() as conn:
             # Check users table
-            cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+            cursor = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+            )
             if cursor.fetchone():
                 print("  ✓ users table exists")
             else:
@@ -73,7 +75,9 @@ def check_database() -> bool:
                 return False
 
             # Check auth_tokens table
-            cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='auth_tokens'")
+            cursor = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='auth_tokens'"
+            )
             if cursor.fetchone():
                 print("  ✓ auth_tokens table exists")
             else:
@@ -81,7 +85,9 @@ def check_database() -> bool:
                 return False
 
             # Check rate_limit_tracking table
-            cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='rate_limit_tracking'")
+            cursor = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='rate_limit_tracking'"
+            )
             if cursor.fetchone():
                 print("  ✓ rate_limit_tracking table exists")
             else:
@@ -109,7 +115,7 @@ def print_usage_instructions() -> None:
     print("   uv run app.py")
 
     print("\n2. Visit the login page:")
-    print(f"   http://localhost:8000/auth/login")
+    print("   http://localhost:8000/auth/login")
 
     print("\n3. After authentication, you'll receive a token")
 
@@ -124,7 +130,7 @@ def print_usage_instructions() -> None:
     print("\n   # Create new token")
     print("   curl -X POST -H 'X-API-Token: YOUR_TOKEN' \\")
     print("        -H 'Content-Type: application/json' \\")
-    print("        -d '{\"name\": \"My RSS Reader\"}' \\")
+    print('        -d \'{"name": "My RSS Reader"}\' \\')
     print("        http://localhost:8000/auth/tokens")
 
     print("\n6. Rate limits:")

@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from auth import (
     RateLimitMiddleware,
@@ -28,7 +28,6 @@ from config import (
     API_DESCRIPTION,
     API_TITLE,
     API_VERSION,
-    GITLAB_REDIRECT_URI,
     MAX_PAGES_PER_RUN,
     MAX_RSS_ITEMS,
     MIN_SCRAPE_INTERVAL,
@@ -47,8 +46,8 @@ from scraper import ArticleStateEnum, InfoTsinghuaScraper
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
@@ -66,7 +65,9 @@ async def scrape_articles() -> None:
     if last_scrape:
         time_since_last_scrape = (now - last_scrape) / 1000  # Convert to seconds
         if time_since_last_scrape < MIN_SCRAPE_INTERVAL:
-            logger.info(f"Skipping scrape: last scrape was {time_since_last_scrape:.1f} seconds ago (minimum: {MIN_SCRAPE_INTERVAL}s)")
+            logger.info(
+                f"Skipping scrape: last scrape was {time_since_last_scrape:.1f} seconds ago (minimum: {MIN_SCRAPE_INTERVAL}s)"
+            )
             return
 
     logger.info("Starting scrape...")
@@ -97,7 +98,9 @@ async def scrape_articles() -> None:
                     # Check if article publish time is before cutoff
                     publish_time = item.get("fbsj", 0)
                     if publish_time < cutoff_time_ms:
-                        logger.info(f"Reached article {item.get('xxid')} with publish_time {publish_time} < cutoff {cutoff_time_ms}, stopping")
+                        logger.info(
+                            f"Reached article {item.get('xxid')} with publish_time {publish_time} < cutoff {cutoff_time_ms}, stopping"
+                        )
                         break
 
                     try:
@@ -112,7 +115,9 @@ async def scrape_articles() -> None:
                     except (ValueError, KeyError) as e:
                         # Skip items with missing required fields
                         error_count += 1
-                        logger.warning(f"Skipping item {item.get('xxid', 'UNKNOWN')} due to error: {e}")
+                        logger.warning(
+                            f"Skipping item {item.get('xxid', 'UNKNOWN')} due to error: {e}"
+                        )
                         continue
                 else:
                     # Continue to next page if inner loop didn't break
@@ -121,7 +126,9 @@ async def scrape_articles() -> None:
                 # Break outer loop if inner loop broke (reached cutoff)
                 break
 
-            logger.info(f"Fetched {total_items} items total. Saved {new_count} new articles, updated {updated_count} existing articles, skipped {skipped_count} existing, {error_count} errors")
+            logger.info(
+                f"Fetched {total_items} items total. Saved {new_count} new articles, updated {updated_count} existing articles, skipped {skipped_count} existing, {error_count} errors"
+            )
 
             # Update last scrape time
             scrape_end_time = int(datetime.now(timezone.utc).timestamp() * 1000)
@@ -208,6 +215,7 @@ async def root(
 # OAuth Endpoints
 # =============================================================================
 
+
 class TokenCreateRequest(BaseModel):
     """Request model for creating a token."""
 
@@ -247,13 +255,14 @@ async def callback(code: str, state: str):
         "message": "Authentication successful",
         "token": token,
         "user_id": result["user_id"],
-        "instructions": f"Use this token with X-API-Token header or ?token= query parameter to access /rss",
+        "instructions": "Use this token with X-API-Token header or ?token= query parameter to access /rss",
     }
 
 
 # =============================================================================
 # Token Management Endpoints
 # =============================================================================
+
 
 @app.get("/auth/tokens")
 async def list_tokens(
@@ -286,7 +295,7 @@ async def create_token(
     return {
         "token": token,
         "message": "Token created successfully",
-        "instructions": f"Use this token with X-API-Token header to access /rss",
+        "instructions": "Use this token with X-API-Token header to access /rss",
     }
 
 
@@ -318,7 +327,7 @@ async def rotate_token(
     return {
         "token": new_token,
         "message": "Token rotated successfully",
-        "instructions": f"Use the new token with X-API-Token header to access /rss",
+        "instructions": "Use the new token with X-API-Token header to access /rss",
     }
 
 
@@ -331,10 +340,18 @@ async def rotate_token(
 @limiter.limit(f"{RATE_LIMIT_REQUESTS}/{RATE_LIMIT_PERIOD}")
 async def rss_feed(
     request: Request,
-    category_in: list[str] | None = Query(None, description="Categories to filter in (only these categories)"),
-    category_not_in: list[str] | None = Query(None, alias="not_in", description="Categories to filter out (exclude these categories)"),
-    token: str | None = Query(None, description="Authentication token (can also use X-API-Token header)"),
-    current_user: dict[str, Any] | None = Depends(lambda r, t=None, q=None: get_current_user_optional(r, t, q)),
+    category_in: list[str] | None = Query(
+        None, description="Categories to filter in (only these categories)"
+    ),
+    category_not_in: list[str] | None = Query(
+        None, alias="not_in", description="Categories to filter out (exclude these categories)"
+    ),
+    token: str | None = Query(
+        None, description="Authentication token (can also use X-API-Token header)"
+    ),
+    current_user: dict[str, Any] | None = Depends(
+        lambda r, t=None, q=None: get_current_user_optional(r, t, q)
+    ),
 ) -> Response:
     """Generate and return RSS feed (requires authentication).
 
@@ -382,9 +399,7 @@ async def rss_feed(
 async def health(request: Request) -> dict[str, str]:
     """Health check endpoint."""
     _ = get_recent_articles(limit=1)
-    return {
-        "status": "healthy"
-    }
+    return {"status": "healthy"}
 
 
 if __name__ == "__main__":

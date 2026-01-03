@@ -53,11 +53,11 @@ def validate_category_input(categories: list[str] | None) -> list[str]:
         if len(category) == 0:
             continue
         if len(category) > 100:
-            raise ValueError(f"Category too long (maximum: 100 characters)")
+            raise ValueError("Category too long (maximum: 100 characters)")
 
         # Validate character set (allow common Chinese characters, letters, numbers, punctuation)
         # This prevents injection attempts while allowing legitimate content
-        if not re.match(r'^[\w\s\u4e00-\u9fff\-_.（）()]+$', category):
+        if not re.match(r"^[\w\s\u4e00-\u9fff\-_.（）()]+$", category):
             raise ValueError(f"Category contains invalid characters: {category}")
 
         validated.append(category)
@@ -75,17 +75,17 @@ def strip_styles_from_html(html: str) -> str:
         HTML string with styles removed
     """
     # Remove style tags
-    html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+    html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
 
     # Remove style attributes from any tag
-    html = re.sub(r'\s+style\s*=\s*["\'][^"\']*["\']', '', html, flags=re.IGNORECASE)
+    html = re.sub(r'\s+style\s*=\s*["\'][^"\']*["\']', "", html, flags=re.IGNORECASE)
 
     # Remove class attributes (optional - remove if you want to keep classes)
     # html = re.sub(r'\s+class\s*=\s*["\'][^"\']*["\']', '', html, flags=re.IGNORECASE)
 
     # Clean up extra whitespace
-    html = re.sub(r'\s+', ' ', html)
-    html = re.sub(r'>\s+<', '><', html)
+    html = re.sub(r"\s+", " ", html)
+    html = re.sub(r">\s+<", "><", html)
 
     return html.strip()
 
@@ -156,7 +156,9 @@ def generate_rss(
         # Build description with metadata
         description_parts = []
         if article_dict.get("department"):
-            description_parts.append(f"<p><strong>发布单位:</strong> {article_dict['department']}</p>")
+            description_parts.append(
+                f"<p><strong>发布单位:</strong> {article_dict['department']}</p>"
+            )
         if article_dict.get("category"):
             description_parts.append(f"<p><strong>分类:</strong> {article_dict['category']}</p>")
 

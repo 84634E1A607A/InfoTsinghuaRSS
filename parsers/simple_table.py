@@ -38,7 +38,9 @@ class SimpleTableParser(BaseParser):
         """
         return any(domain in url for domain in cls.DOMAINS)
 
-    def parse(self, url: str, html: str, session: Any = None, csrf_token: str = "") -> dict[str, Any]:
+    def parse(
+        self, url: str, html: str, session: Any = None, csrf_token: str = ""
+    ) -> dict[str, Any]:
         """Parse simple table-based page content.
 
         Args:
@@ -155,13 +157,15 @@ class SimpleTableParser(BaseParser):
         # Extract publish time from HTML text
         # Format: 发布时间：2025-12-31 or 2025年12月31日
         html_text = soup.get_text()
-        time_match = re.search(r'发布时间[：:]\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})', html_text)
+        time_match = re.search(r"发布时间[：:]\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})", html_text)
         if time_match:
             result["publish_time"] = time_match.group(1)
         else:
-            date_match = re.search(r'(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日', html_text)
+            date_match = re.search(r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日", html_text)
             if date_match:
-                result["publish_time"] = f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}"
+                result["publish_time"] = (
+                    f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}"
+                )
 
         # Department based on domain
         if "xxbg.cic.tsinghua.edu.cn" in url:

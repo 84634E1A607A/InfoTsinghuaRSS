@@ -24,10 +24,12 @@ from parsers import get_parser
 
 logger = logging.getLogger(__name__)
 
+
 class ArticleStateEnum(IntEnum):
     NEW = 0
     UPDATED = 1
     SKIPPED = 2
+
 
 class InfoTsinghuaScraper:
     """Scraper for Tsinghua University Info Portal."""
@@ -74,9 +76,7 @@ class InfoTsinghuaScraper:
         self._session = requests.Session()
 
         # Set user agent
-        self._session.headers.update({
-            "User-Agent": USER_AGENT
-        })
+        self._session.headers.update({"User-Agent": USER_AGENT})
 
         # Visit the list page to get cookies and CSRF token
         response = self._session.get(self.LIST_URL)
@@ -84,7 +84,9 @@ class InfoTsinghuaScraper:
 
         # Extract CSRF token from meta tag
         content = response.text
-        csrf_match = re.search(r'<meta\s+name=["\']_csrf["\']\s+content=["\']([a-z0-9\-]+)', content)
+        csrf_match = re.search(
+            r'<meta\s+name=["\']_csrf["\']\s+content=["\']([a-z0-9\-]+)', content
+        )
         if csrf_match:
             self._csrf_token = csrf_match.group(1)
         else:
@@ -240,7 +242,9 @@ class InfoTsinghuaScraper:
 
         # Validate required fields
         required_fields = ["xxid", "bt", "fbsj", "url"]
-        missing_fields = [field for field in required_fields if field not in item or not item[field]]
+        missing_fields = [
+            field for field in required_fields if field not in item or not item[field]
+        ]
         if missing_fields:
             raise ValueError(f"Missing required fields: {missing_fields}")
 
@@ -275,11 +279,13 @@ class InfoTsinghuaScraper:
             try:
                 detail = self.fetch_detail(item["xxid"])
                 # Override with detailed content
-                article.update({
-                    "title": detail.get("title", article["title"]),
-                    "content": detail.get("content", ""),
-                    "department": detail.get("department", article["department"]),
-                })
+                article.update(
+                    {
+                        "title": detail.get("title", article["title"]),
+                        "content": detail.get("content", ""),
+                        "department": detail.get("department", article["department"]),
+                    }
+                )
                 logger.debug(f"Fetched full content for {item['xxid']}")
             except Exception as e:
                 logger.warning(f"Failed to fetch full content for {item['xxid']}: {e}")
@@ -317,7 +323,7 @@ def main() -> None:
             print(f"URL: {scraper.BASE_URL}{item['url']}")
 
             # Parse timestamp
-            dt = scraper.parse_timestamp(item['fbsj'])
+            dt = scraper.parse_timestamp(item["fbsj"])
             print(f"Publish Time: {dt.isoformat()}")
 
 

@@ -94,7 +94,7 @@ def compute_digest(article: dict[str, Any]) -> str:
     """
     # Create a string with all relevant fields for deduplication
     content_str = f"{article.get('title', '')}|{article.get('content', '')}|{article.get('department', '')}|{article.get('category', '')}"
-    return hashlib.sha256(content_str.encode('utf-8')).hexdigest()
+    return hashlib.sha256(content_str.encode("utf-8")).hexdigest()
 
 
 def validate_article(article: dict[str, Any]) -> None:
@@ -123,9 +123,8 @@ def validate_article(article: dict[str, Any]) -> None:
                 raise ValueError(f"{field} exceeds maximum length of {max_length}")
 
     # Validate publish_time is a valid timestamp
-    if "publish_time" in article:
-        if not isinstance(article["publish_time"], int):
-            raise ValueError("publish_time must be integer")
+    if "publish_time" in article and not isinstance(article["publish_time"], int):
+        raise ValueError("publish_time must be integer")
 
     # Validate content length (can be very long for HTML)
     if "content" in article and article["content"] is not None:
@@ -159,10 +158,7 @@ def upsert_article(article: dict[str, Any]) -> int:
 
     with get_db_connection() as conn:
         # Check if article exists with same digest
-        cursor = conn.execute(
-            "SELECT digest FROM articles WHERE xxid = ?",
-            (article["xxid"],)
-        )
+        cursor = conn.execute("SELECT digest FROM articles WHERE xxid = ?", (article["xxid"],))
         existing = cursor.fetchone()
 
         # If article exists and digest is the same, skip update
@@ -278,9 +274,7 @@ def get_last_scrape_time() -> int | None:
         Last scrape timestamp in milliseconds, or None if never scraped
     """
     with get_db_connection() as conn:
-        cursor = conn.execute(
-            "SELECT value FROM scrape_metadata WHERE key = 'last_scrape_time'"
-        )
+        cursor = conn.execute("SELECT value FROM scrape_metadata WHERE key = 'last_scrape_time'")
         row = cursor.fetchone()
         return row["value"] if row else None
 

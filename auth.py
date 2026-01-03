@@ -6,7 +6,7 @@ import secrets
 from typing import Any
 
 import httpx
-from fastapi import Depends, HTTPException, Request, Response, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import APIKeyHeader, HTTPBearer
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -17,7 +17,6 @@ from auth_db import (
     create_auth_token,
     create_or_update_user,
     delete_auth_token,
-    get_user_by_gitlab_id,
     list_user_tokens,
     rotate_auth_token,
     validate_auth_token,

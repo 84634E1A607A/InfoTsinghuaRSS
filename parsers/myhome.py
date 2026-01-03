@@ -23,7 +23,9 @@ class MyhomeParser(BaseParser):
         """
         return "myhome.tsinghua.edu.cn" in url
 
-    def parse(self, url: str, html: str, session: Any = None, csrf_token: str = "") -> dict[str, Any]:
+    def parse(
+        self, url: str, html: str, session: Any = None, csrf_token: str = ""
+    ) -> dict[str, Any]:
         """Parse myhome page content.
 
         Args:
@@ -63,7 +65,8 @@ class MyhomeParser(BaseParser):
             result["publish_time"] = time_text
             # Try to extract department from time text (format: "单位 发布于 时间")
             import re
-            dept_match = re.search(r'^(.+?)\s+发布于', time_text)
+
+            dept_match = re.search(r"^(.+?)\s+发布于", time_text)
             if dept_match:
                 result["department"] = dept_match.group(1).strip()
 

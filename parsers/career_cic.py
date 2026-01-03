@@ -23,7 +23,9 @@ class CareerCicParser(BaseParser):
         """
         return "career.cic.tsinghua.edu.cn" in url
 
-    def parse(self, url: str, html: str, session: Any = None, csrf_token: str = "") -> dict[str, Any]:
+    def parse(
+        self, url: str, html: str, session: Any = None, csrf_token: str = ""
+    ) -> dict[str, Any]:
         """Parse career center page content.
 
         Args:
@@ -51,7 +53,12 @@ class CareerCicParser(BaseParser):
             if title_elem:
                 potential_title = title_elem.get_text(strip=True)
                 # Filter out very short or generic titles
-                if len(potential_title) > 10 and potential_title not in ["用户登录", "首页", "通知公告", "清华大学学生职业发展指导中心"]:
+                if len(potential_title) > 10 and potential_title not in [
+                    "用户登录",
+                    "首页",
+                    "通知公告",
+                    "清华大学学生职业发展指导中心",
+                ]:
                     result["title"] = potential_title
                     break
 
