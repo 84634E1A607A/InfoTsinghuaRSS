@@ -38,12 +38,14 @@ class SimpleTableParser(BaseParser):
         """
         return any(domain in url for domain in cls.DOMAINS)
 
-    def parse(self, url: str, html: str) -> dict[str, Any]:
+    def parse(self, url: str, html: str, session: Any = None, csrf_token: str = "") -> dict[str, Any]:
         """Parse simple table-based page content.
 
         Args:
             url: The URL being parsed
             html: The HTML content to parse
+            session: Optional requests session (unused in simple table parser)
+            csrf_token: Optional CSRF token (unused in simple table parser)
 
         Returns:
             Dictionary with parsed content

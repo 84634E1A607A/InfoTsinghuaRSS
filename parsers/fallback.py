@@ -30,12 +30,14 @@ class FallbackParser(BaseParser):
         """
         return True
 
-    def parse(self, url: str, html: str) -> dict[str, Any]:
+    def parse(self, url: str, html: str, session: Any = None, csrf_token: str = "") -> dict[str, Any]:
         """Attempt basic content extraction.
 
         Args:
             url: The URL being parsed
             html: The HTML content to parse
+            session: Optional requests session (unused in fallback)
+            csrf_token: Optional CSRF token (unused in fallback)
 
         Returns:
             Dictionary with basic extracted content

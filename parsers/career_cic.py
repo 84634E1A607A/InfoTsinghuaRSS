@@ -23,12 +23,14 @@ class CareerCicParser(BaseParser):
         """
         return "career.cic.tsinghua.edu.cn" in url
 
-    def parse(self, url: str, html: str) -> dict[str, Any]:
+    def parse(self, url: str, html: str, session: Any = None, csrf_token: str = "") -> dict[str, Any]:
         """Parse career center page content.
 
         Args:
             url: The URL being parsed
             html: The HTML content to parse
+            session: Optional requests session (unused in career parser)
+            csrf_token: Optional CSRF token (unused in career parser)
 
         Returns:
             Dictionary with parsed content

@@ -173,8 +173,8 @@ class InfoTsinghuaScraper:
         # Use the appropriate parser for this URL/HTML
         parser = get_parser(final_url, html)
 
-        # Use the parser to extract content
-        parsed = parser.parse(final_url, html)
+        # Use the parser to extract content, passing session and CSRF token
+        parsed = parser.parse(final_url, html, session=self._session, csrf_token=self._csrf_token)
         return {
             "title": parsed.get("title", ""),
             "content": parsed.get("content", ""),

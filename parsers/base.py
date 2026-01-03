@@ -27,12 +27,14 @@ class BaseParser(ABC):
         pass
 
     @abstractmethod
-    def parse(self, url: str, html: str) -> dict[str, Any]:
+    def parse(self, url: str, html: str, session: Any = None, csrf_token: str = "") -> dict[str, Any]:
         """Parse content from the given URL and HTML.
 
         Args:
             url: The URL being parsed
             html: The HTML content to parse
+            session: Optional requests session with cookies
+            csrf_token: Optional CSRF token for API requests
 
         Returns:
             Dictionary with keys:
