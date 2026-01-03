@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 
@@ -120,3 +121,50 @@ LIBRARY_ENCODINGS = ["utf-8-sig", "gbk", "gb2312", "gb18030", "utf-8"]
 # Rate limiting for RSS endpoints (requests per minute)
 RATE_LIMIT_REQUESTS = 30
 RATE_LIMIT_PERIOD = 60  # seconds
+
+
+# =============================================================================
+# OAuth Authentication Settings
+# =============================================================================
+
+# Enable/disable OAuth authentication
+OAUTH_ENABLED = os.getenv("OAUTH_ENABLED", "true").lower() == "true"
+
+# GitLab OAuth configuration
+GITLAB_URL = os.getenv("GITLAB_URL", "https://git.tsinghua.edu.cn")
+GITLAB_CLIENT_ID = os.getenv("GITLAB_CLIENT_ID", "")
+GITLAB_CLIENT_SECRET = os.getenv("GITLAB_CLIENT_SECRET", "")
+
+# OAuth redirect URI (must match GitLab app configuration)
+GITLAB_REDIRECT_URI = os.getenv("GITLAB_REDIRECT_URI", "http://localhost:8000/auth/callback")
+
+# OAuth scopes
+GITLAB_SCOPES = ["read_user"]
+
+# Session secret for OAuth state
+# Generate with: python -c "import secrets; print(secrets.token_hex(32))"
+SESSION_SECRET = os.getenv("SESSION_SECRET", "")
+
+
+# =============================================================================
+# Auth Token Settings
+# =============================================================================
+
+# Token rotation: force rotation after N days
+TOKEN_ROTATION_DAYS = 90
+
+# Maximum active tokens per user
+MAX_TOKENS_PER_USER = 10
+
+
+# =============================================================================
+# Per-User Rate Limiting Settings
+# =============================================================================
+
+# Rate limits per authenticated user (requests / period)
+USER_RATE_LIMIT_PER_SECOND = 1
+USER_RATE_LIMIT_PER_HOUR = 10
+
+# Rate limit windows
+RATE_LIMIT_WINDOW_SECOND = 1  # 1 second window
+RATE_LIMIT_WINDOW_HOUR = 3600  # 1 hour window
