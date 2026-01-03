@@ -5,25 +5,25 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from auth import (
-    RateLimitMiddleware,
     TokenManagement,
     get_current_user,
     get_current_user_optional,
     get_gitlab_authorization_url,
     handle_gitlab_callback,
 )
-from auth_db import init_auth_db
+from auth_db import (
+    check_rate_limit,
+    init_auth_db,
+)
 from config import (
     API_DESCRIPTION,
     API_TITLE,
@@ -32,12 +32,14 @@ from config import (
     MAX_RSS_ITEMS,
     MIN_SCRAPE_INTERVAL,
     OAUTH_ENABLED,
-    RATE_LIMIT_PERIOD,
-    RATE_LIMIT_REQUESTS,
+    RATE_LIMIT_WINDOW_HOUR,
+    RATE_LIMIT_WINDOW_SECOND,
     RSS_CACHE_MAX_AGE,
     SCRAPE_INTERVAL,
     SERVER_HOST,
     SERVER_PORT,
+    USER_RATE_LIMIT_PER_HOUR,
+    USER_RATE_LIMIT_PER_SECOND,
 )
 from database import get_last_scrape_time, get_recent_articles, init_db, set_last_scrape_time
 from rss import generate_rss, validate_category_input
@@ -51,8 +53,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address)
+# Initialize scheduler
 scheduler = AsyncIOScheduler()
 
 
@@ -176,36 +177,41 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add rate limiting exception handler
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Add per-user rate limiting middleware
-app.add_middleware(RateLimitMiddleware)
-
-
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def root(
     current_user: dict[str, Any] | None = Depends(get_current_user_optional),
+) -> Response:
+    """Root endpoint serving token management HTML."""
+    html_path = Path(__file__).parent / "templates" / "tokens.html"
+
+    if not html_path.exists():
+        return Response(
+            content="<h1>Info Tsinghua RSS Feed</h1><p>Templates not found</p>",
+            media_type="text/html",
+        )
+
+    html_content = html_path.read_text(encoding="utf-8")
+    return Response(content=html_content, media_type="text/html")
+
+
+@app.get("/api/status")
+async def api_status(
+    request: Request,
+    token: str | None = Query(None, description="Authentication token"),
 ) -> dict[str, Any]:
-    """Root endpoint with API information."""
+    """API status endpoint for frontend authentication check."""
+    current_user = get_current_user_optional(request, token=None, query_token=token)
+
     response = {
-        "message": "Tsinghua Info RSS Feed",
-        "feed_url": "/rss",
-        "docs_url": "/docs",
         "auth_enabled": OAUTH_ENABLED,
+        "authenticated": current_user is not None,
     }
 
     if current_user:
         response["user"] = {
             "username": current_user["username"],
             "email": current_user["email"],
-        }
-        response["token_management"] = {
-            "list_tokens": "GET /auth/tokens",
-            "create_token": "POST /auth/tokens",
-            "delete_token": "DELETE /auth/tokens/{token}",
-            "rotate_token": "POST /auth/tokens/{token}/rotate",
         }
 
     return response
@@ -237,7 +243,7 @@ async def login():
 
 @app.get("/auth/callback")
 async def callback(code: str, state: str):
-    """Handle GitLab OAuth callback."""
+    """Handle GitLab OAuth callback and redirect to GUI."""
     if not OAUTH_ENABLED:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -249,14 +255,8 @@ async def callback(code: str, state: str):
     # Create a token for the user
     token = TokenManagement.create_token(result["user_id"], "OAuth Login Token")
 
-    # Redirect to frontend with token
-    # For RSS readers, you might want to show the token in a page
-    return {
-        "message": "Authentication successful",
-        "token": token,
-        "user_id": result["user_id"],
-        "instructions": "Use this token with X-API-Token header or ?token= query parameter to access /rss",
-    }
+    # Redirect to frontend with token as query parameter
+    return RedirectResponse(url=f"/?token={token}&new=true")
 
 
 # =============================================================================
@@ -337,7 +337,6 @@ async def rotate_token(
 
 
 @app.get("/rss")
-@limiter.limit(f"{RATE_LIMIT_REQUESTS}/{RATE_LIMIT_PERIOD}")
 async def rss_feed(
     request: Request,
     category_in: list[str] | None = Query(
@@ -360,6 +359,9 @@ async def rss_feed(
     Authentication:
     - Use X-API-Token header or ?token= query parameter
     - Get a token by visiting /auth/login (GitLab OAuth)
+
+    Rate Limiting:
+    - Authenticated users: 1 request/second, 10 requests/hour
     """
     # Extract and validate token
     current_user = get_current_user_optional(request, token=None, query_token=token)
@@ -371,6 +373,53 @@ async def rss_feed(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Apply per-user rate limiting for authenticated users
+    remaining_second = USER_RATE_LIMIT_PER_SECOND
+    remaining_hour = USER_RATE_LIMIT_PER_HOUR
+
+    if current_user:
+        user_id = current_user["user_id"]
+
+        # Check per-second rate limit
+        allowed_second, remaining_second = check_rate_limit(
+            user_id=user_id,
+            window_seconds=RATE_LIMIT_WINDOW_SECOND,
+            max_requests=USER_RATE_LIMIT_PER_SECOND,
+        )
+
+        if not allowed_second:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded: maximum 1 request per second",
+                headers={
+                    "X-RateLimit-Limit-Second": str(USER_RATE_LIMIT_PER_SECOND),
+                    "X-RateLimit-Remaining-Second": "0",
+                    "X-RateLimit-Limit-Hour": str(USER_RATE_LIMIT_PER_HOUR),
+                    "X-RateLimit-Remaining-Hour": str(remaining_hour),
+                    "Retry-After": "1",
+                },
+            )
+
+        # Check per-hour rate limit
+        allowed_hour, remaining_hour = check_rate_limit(
+            user_id=user_id,
+            window_seconds=RATE_LIMIT_WINDOW_HOUR,
+            max_requests=USER_RATE_LIMIT_PER_HOUR,
+        )
+
+        if not allowed_hour:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded: maximum 10 requests per hour",
+                headers={
+                    "X-RateLimit-Limit-Second": str(USER_RATE_LIMIT_PER_SECOND),
+                    "X-RateLimit-Remaining-Second": str(remaining_second),
+                    "X-RateLimit-Limit-Hour": str(USER_RATE_LIMIT_PER_HOUR),
+                    "X-RateLimit-Remaining-Hour": "0",
+                    "Retry-After": "3600",
+                },
+            )
+
     # Validate category inputs
     category_in = validate_category_input(category_in)
     category_not_in = validate_category_input(category_not_in)
@@ -381,18 +430,30 @@ async def rss_feed(
         categories_not_in=category_not_in,
     )
 
+    response_headers = {
+        "Cache-Control": f"public, max-age={RSS_CACHE_MAX_AGE}",
+    }
+
+    # Add rate limit headers if authenticated
+    if current_user:
+        response_headers.update(
+            {
+                "X-RateLimit-Limit-Second": str(USER_RATE_LIMIT_PER_SECOND),
+                "X-RateLimit-Remaining-Second": str(remaining_second),
+                "X-RateLimit-Limit-Hour": str(USER_RATE_LIMIT_PER_HOUR),
+                "X-RateLimit-Remaining-Hour": str(remaining_hour),
+            }
+        )
+
     return Response(
         content=rss_xml,
         media_type="application/rss+xml; charset=utf-8",
-        headers={
-            "Cache-Control": f"public, max-age={RSS_CACHE_MAX_AGE}",
-        },
+        headers=response_headers,
     )
 
 
 @app.get("/health")
-@limiter.limit(f"{RATE_LIMIT_REQUESTS}/{RATE_LIMIT_PERIOD}")
-async def health(request: Request) -> dict[str, str]:
+async def health() -> dict[str, str]:
     """Health check endpoint."""
     _ = get_recent_articles(limit=1)
     return {"status": "healthy"}

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Manager - Info Tsinghua RSS</title>
+</head>
+<body>
+    <h1>Authentication Token Manager</h1>
+
+    <div id="auth-required">
+        <p>You need to authenticate to manage your tokens.</p>
+        <p><a href="/auth/login">Login with GitLab</a></p>
+    </div>
+
+    <div id="token-manager" style="display: none;">
+        <h2>Your Tokens</h2>
+        <div id="user-info"></div>
+
+        <div id="tokens-list"></div>
+
+        <h3>Create New Token</h3>
+        <form id="create-token-form">
+            <label for="token-name">Token Name (optional):</label>
+            <input type="text" id="token-name" name="name" placeholder="e.g., My RSS Reader">
+            <button type="submit">Create Token</button>
+        </form>
+
+        <div id="new-token-display" style="display: none;">
+            <h4>New Token Created:</h4>
+            <p><strong>Save this token now!</strong> You won't be able to see it again.</p>
+            <input type="text" id="new-token" readonly style="width: 400px;">
+            <button onclick="copyToken()">Copy</button>
+        </div>
+
+        <h3>RSS Feed URL</h3>
+        <p>Use any of your tokens to access the RSS feed:</p>
+        <input type="text" id="feed-url" readonly style="width: 500px;">
+        <button onclick="copyFeedUrl()">Copy</button>
+
+        <h3>Usage Instructions</h3>
+        <ul>
+            <li><strong>Header method:</strong> <code>X-API-Token: your-token</code></li>
+            <li><strong>Bearer method:</strong> <code>Authorization: Bearer your-token</code></li>
+            <li><strong>Query parameter:</strong> <code>?token=your-token</code></li>
+        </ul>
+
+        <p><a href="/rss">View RSS Feed</a></p>
+        <p><a href="/docs">API Documentation</a></p>
+    </div>
+
+    <div id="error-message" style="display: none; color: red;"></div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let currentToken = null;
+
+        // Check authentication on load
+        async function checkAuth() {
+            try {
+                // Get token from URL if present (from OAuth callback), otherwise from localStorage
+                currentToken = getTokenFromUrl();
+                const isNewToken = getQueryParam('new') === 'true';
+
+                // If token in URL, save it to localStorage
+                if (currentToken && isNewToken) {
+                    localStorage.setItem('rss_token', currentToken);
+                } else if (!currentToken) {
+                    // Try to get from localStorage
+                    currentToken = localStorage.getItem('rss_token');
+                }
+
+                // Include token in API status check
+                const statusUrl = currentToken ? `${API_BASE}/api/status?token=${encodeURIComponent(currentToken)}` : `${API_BASE}/api/status`;
+                const response = await fetch(statusUrl);
+                const data = await response.json();
+
+                if (data.authenticated && data.user) {
+                    document.getElementById('auth-required').style.display = 'none';
+                    document.getElementById('token-manager').style.display = 'block';
+                    document.getElementById('user-info').innerHTML =
+                        `<p>Logged in as: <strong>${escapeHtml(data.user.username)}</strong> (${escapeHtml(data.user.email)})</p>`;
+
+                    // If new token from OAuth, display it
+                    if (isNewToken) {
+                        document.getElementById('new-token').value = currentToken;
+                        document.getElementById('new-token-display').style.display = 'block';
+                        // Clear URL parameters
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }
+
+                    loadTokens();
+                } else {
+                    document.getElementById('auth-required').style.display = 'block';
+                    document.getElementById('token-manager').style.display = 'none';
+                    // Clear invalid token from localStorage
+                    localStorage.removeItem('rss_token');
+                }
+            } catch (error) {
+                showError('Failed to check authentication status: ' + error.message);
+            }
+        }
+
+        // Load tokens
+        async function loadTokens() {
+            try {
+                // Use token from URL if available, otherwise we'll rely on session cookie
+                const headers = currentToken ? { 'X-API-Token': currentToken } : {};
+
+                const response = await fetch(`${API_BASE}/auth/tokens?token=${encodeURIComponent(currentToken || '')}`, { headers });
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        window.location.href = '/auth/login';
+                        return;
+                    }
+                    throw new Error('Failed to load tokens');
+                }
+
+                const tokens = await response.json();
+                displayTokens(tokens);
+            } catch (error) {
+                showError('Failed to load tokens: ' + error.message);
+            }
+        }
+
+        // Display tokens
+        function displayTokens(tokens) {
+            const container = document.getElementById('tokens-list');
+
+            if (tokens.length === 0) {
+                container.innerHTML = '<p>No tokens yet. Create one below!</p>';
+                return;
+            }
+
+            let html = '<table border="1" cellpadding="5"><tr><th>Name</th><th>Token</th><th>Created</th><th>Last Used</th><th>Actions</th></tr>';
+
+            tokens.forEach(token => {
+                const createdDate = token.created_at ? new Date(token.created_at).toLocaleString() : 'N/A';
+                const lastUsedDate = token.last_used_at ? new Date(token.last_used_at).toLocaleString() : 'Never';
+
+                html += `<tr>
+                    <td>${escapeHtml(token.name || 'Unnamed')}</td>
+                    <td><code>${escapeHtml(token.token)}</code></td>
+                    <td>${createdDate}</td>
+                    <td>${lastUsedDate}</td>
+                    <td>
+                        <button onclick="rotateToken('${token.id}')">Rotate</button>
+                        <button onclick="deleteToken('${token.id}')">Delete</button>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</table>';
+            container.innerHTML = html;
+
+            // Update feed URL with first token
+            if (tokens.length > 0) {
+                document.getElementById('feed-url').value = `${API_BASE}/rss?token=${currentToken || 'YOUR_TOKEN'}`;
+            }
+        }
+
+        // Create token
+        document.getElementById('create-token-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('token-name').value;
+
+            try {
+                const headers = currentToken ? { 'X-API-Token': currentToken, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+                const queryParams = currentToken ? `?token=${encodeURIComponent(currentToken)}` : '';
+
+                const response = await fetch(`${API_BASE}/auth/tokens${queryParams}`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ name: name || null })
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        window.location.href = '/auth/login';
+                        return;
+                    }
+                    throw new Error('Failed to create token');
+                }
+
+                const data = await response.json();
+
+                // Show new token
+                document.getElementById('new-token').value = data.token;
+                document.getElementById('new-token-display').style.display = 'block';
+                document.getElementById('token-name').value = '';
+
+                // Reload tokens list
+                loadTokens();
+            } catch (error) {
+                showError('Failed to create token: ' + error.message);
+            }
+        });
+
+        // Delete token
+        async function deleteToken(tokenId) {
+            if (!confirm('Are you sure you want to delete this token?')) {
+                return;
+            }
+
+            try {
+                const headers = currentToken ? { 'X-API-Token': currentToken } : {};
+                const queryParams = currentToken ? `?token=${encodeURIComponent(currentToken)}` : '';
+
+                const response = await fetch(`${API_BASE}/auth/tokens/${tokenId}${queryParams}`, {
+                    method: 'DELETE',
+                    headers: headers
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete token');
+                }
+
+                loadTokens();
+            } catch (error) {
+                showError('Failed to delete token: ' + error.message);
+            }
+        }
+
+        // Rotate token
+        async function rotateToken(tokenId) {
+            if (!confirm('This will invalidate the old token and create a new one. Continue?')) {
+                return;
+            }
+
+            try {
+                const headers = currentToken ? { 'X-API-Token': currentToken } : {};
+                const queryParams = currentToken ? `?token=${encodeURIComponent(currentToken)}` : '';
+
+                const response = await fetch(`${API_BASE}/auth/tokens/${tokenId}/rotate${queryParams}`, {
+                    method: 'POST',
+                    headers: headers
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to rotate token');
+                }
+
+                const data = await response.json();
+
+                // Show new token
+                document.getElementById('new-token').value = data.token;
+                document.getElementById('new-token-display').style.display = 'block';
+
+                loadTokens();
+            } catch (error) {
+                showError('Failed to rotate token: ' + error.message);
+            }
+        }
+
+        // Copy token to clipboard
+        function copyToken() {
+            const tokenField = document.getElementById('new-token');
+            tokenField.select();
+            document.execCommand('copy');
+            alert('Token copied to clipboard!');
+        }
+
+        // Copy feed URL to clipboard
+        function copyFeedUrl() {
+            const feedUrlField = document.getElementById('feed-url');
+            feedUrlField.select();
+            document.execCommand('copy');
+            alert('Feed URL copied to clipboard!');
+        }
+
+        // Get token from URL query parameter
+        function getTokenFromUrl() {
+            return getQueryParam('token');
+        }
+
+        // Get query parameter
+        function getQueryParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name);
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        checkAuth();
+    </script>
+</body>
+</html>
