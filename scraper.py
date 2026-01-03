@@ -253,8 +253,8 @@ class InfoTsinghuaScraper:
         if not isinstance(url_path, str):
             raise ValueError(f"URL must be string, got {type(url_path)}")
 
-        # Check for path traversal attempts
-        if ".." in url_path or url_path.startswith("/"):
+        # Check for path traversal attempts (allow absolute paths starting with /)
+        if ".." in url_path:
             raise ValueError(f"Invalid URL path: {url_path}")
 
         # Validate field lengths

@@ -53,7 +53,6 @@
     <script>
         const API_BASE = window.location.origin;
         let currentToken = null;
-        let currentTokenId = null;
 
         // Check authentication on load
         async function checkAuth() {
@@ -114,10 +113,7 @@
 
                 if (tokens.length > 0) {
                     // Display the first (and should be only) token
-                    const token = tokens[0];
-                    currentTokenId = token.id;
-
-                    // Show token (we already have it from currentToken)
+                    // Token is already set from currentToken variable
                     document.getElementById('user-token').value = currentToken || 'YOUR_TOKEN_HERE';
                     document.getElementById('token-display').style.display = 'block';
                     document.getElementById('no-token').style.display = 'none';
@@ -137,7 +133,7 @@
 
         // Rotate current token
         async function rotateCurrentToken() {
-            if (!currentTokenId) {
+            if (!currentToken) {
                 showError('No token to rotate');
                 return;
             }
@@ -150,7 +146,7 @@
                 const headers = currentToken ? { 'X-API-Token': currentToken } : {};
                 const queryParams = currentToken ? `?token=${encodeURIComponent(currentToken)}` : '';
 
-                const response = await fetch(`${API_BASE}/auth/tokens/${currentTokenId}/rotate${queryParams}`, {
+                const response = await fetch(`${API_BASE}/auth/tokens/${encodeURIComponent(currentToken)}/rotate${queryParams}`, {
                     method: 'POST',
                     headers: headers
                 });
