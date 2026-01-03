@@ -33,13 +33,14 @@ env/
 *.swo
 *~
 
-# Project specific
-*.json
-*.html
-*.png
-!CLAUDE.md
-!pyproject.toml
-!requirements.txt
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+.env.local
 
 # Logs
 *.log

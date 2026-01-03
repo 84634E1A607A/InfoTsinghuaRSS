@@ -223,6 +223,29 @@ class InfoTsinghuaScraper:
 
         return all_items
 
+    def upsert_article(self, item: dict[str, Any]) -> bool:
+        """Insert or update an article from a list item.
+
+        Args:
+            item: List item dictionary from the API
+
+        Returns:
+            True if the article was newly inserted, False if updated
+        """
+        from database import upsert_article as db_upsert
+
+        article = {
+            "xxid": item["xxid"],
+            "title": item["bt"],
+            "content": "",  # Content not available in list view
+            "department": item.get("dwmc", ""),
+            "category": item.get("lmmc", ""),
+            "publish_time": item["fbsj"],
+            "url": f"{self.BASE_URL}{item['url']}",
+        }
+
+        return db_upsert(article)
+
     @staticmethod
     def parse_timestamp(timestamp_ms: int) -> datetime:
         """Parse millisecond timestamp to datetime.
