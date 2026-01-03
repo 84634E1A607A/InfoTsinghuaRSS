@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -40,6 +41,7 @@ def init_db() -> None:
                 category TEXT,
                 publish_time INTEGER NOT NULL,
                 url TEXT NOT NULL,
+                digest TEXT NOT NULL,
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL
             )
@@ -60,7 +62,25 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_xxid ON articles(xxid)
         """)
 
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_digest ON articles(digest)
+        """)
+
         conn.commit()
+
+
+def compute_digest(article: dict[str, Any]) -> str:
+    """Compute a digest hash for an article.
+
+    Args:
+        article: Article dictionary
+
+    Returns:
+        SHA256 hex digest of the article content
+    """
+    # Create a string with all relevant fields for deduplication
+    content_str = f"{article.get('title', '')}|{article.get('content', '')}|{article.get('department', '')}|{article.get('category', '')}"
+    return hashlib.sha256(content_str.encode('utf-8')).hexdigest()
 
 
 def upsert_article(article: dict[str, Any]) -> bool:
@@ -77,15 +97,28 @@ def upsert_article(article: dict[str, Any]) -> bool:
             - url: Article URL
 
     Returns:
-        True if the article was newly inserted, False if updated
+        True if the article was newly inserted, False if updated or skipped
     """
+    digest = compute_digest(article)
     now = int(datetime.now(timezone.utc).timestamp() * 1000)
 
     with get_db_connection() as conn:
+        # Check if article exists with same digest
+        cursor = conn.execute(
+            "SELECT digest FROM articles WHERE xxid = ?",
+            (article["xxid"],)
+        )
+        existing = cursor.fetchone()
+
+        # If article exists and digest is the same, skip update
+        if existing and existing["digest"] == digest:
+            return False
+
+        # Insert or update article
         cursor = conn.execute(
             """
-            INSERT INTO articles (xxid, title, content, department, category, publish_time, url, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO articles (xxid, title, content, department, category, publish_time, url, digest, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(xxid) DO UPDATE SET
                 title = excluded.title,
                 content = excluded.content,
@@ -93,6 +126,7 @@ def upsert_article(article: dict[str, Any]) -> bool:
                 category = excluded.category,
                 publish_time = excluded.publish_time,
                 url = excluded.url,
+                digest = excluded.digest,
                 updated_at = excluded.updated_at
             """,
             (
@@ -103,13 +137,14 @@ def upsert_article(article: dict[str, Any]) -> bool:
                 article["category"],
                 article["publish_time"],
                 article["url"],
+                digest,
                 now,
                 now,
             ),
         )
         conn.commit()
-        # If changes == 1 and it was an insert (not an update)
-        return cursor.rowcount > 0
+        # Return True only if it was a new insert
+        return existing is None
 
 
 def get_recent_articles(limit: int = 100) -> list[dict[str, Any]]:

@@ -34,6 +34,9 @@ MAX_PAGES_PER_RUN = 1 # Test: 1 page
 # MIN_SCRAPE_INTERVAL = 10 * 60
 MIN_SCRAPE_INTERVAL = 90 # Test: 1.5 minutes
 
+# Maximum articles to return in RSS feed
+MAX_RSS_ITEMS = 500
+
 
 scheduler = AsyncIOScheduler()
 
@@ -138,7 +141,7 @@ async def root() -> dict[str, str]:
 @app.get("/rss")
 async def rss_feed() -> Response:
     """Generate and return RSS feed."""
-    rss_xml = generate_rss(limit=500)
+    rss_xml = generate_rss(limit=MAX_RSS_ITEMS)
 
     return Response(
         content=rss_xml,
@@ -152,10 +155,9 @@ async def rss_feed() -> Response:
 @app.get("/health")
 async def health() -> dict[str, str]:
     """Health check endpoint."""
-    articles = get_recent_articles(limit=1)
+    _ = get_recent_articles(limit=1)
     return {
-        "status": "healthy",
-        "total_articles": len(articles),
+        "status": "healthy"
     }
 
 

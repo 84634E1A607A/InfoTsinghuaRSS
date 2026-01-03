@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -22,10 +24,15 @@ class InfoTsinghuaScraper:
     LIST_API = f"{BASE_URL}/b/info/xxfb_fg/xnzx/template/more"
     DETAIL_URL_TEMPLATE = f"{BASE_URL}/f/info/xxfb_fg/xnzx/template/detail?xxid={{xxid}}"
 
+    # Rate limiting: 3 requests per second
+    RATE_LIMIT = 3.0  # requests per second
+    MIN_REQUEST_INTERVAL = 1.0 / RATE_LIMIT  # seconds between requests
+
     def __init__(self) -> None:
         """Initialize the scraper."""
         self._session: requests.Session | None = None
         self._csrf_token: str = ""
+        self._last_request_time: float = 0.0
 
     def __enter__(self) -> InfoTsinghuaScraper:
         """Enter context manager."""
@@ -36,6 +43,18 @@ class InfoTsinghuaScraper:
         """Exit context manager."""
         if self._session:
             self._session.close()
+
+    def _rate_limit(self) -> None:
+        """Apply rate limiting by sleeping if necessary."""
+        now = time.time()
+        time_since_last_request = now - self._last_request_time
+
+        if time_since_last_request < self.MIN_REQUEST_INTERVAL:
+            sleep_time = self.MIN_REQUEST_INTERVAL - time_since_last_request
+            logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f}s")
+            time.sleep(sleep_time)
+
+        self._last_request_time = time.time()
 
     def _init_session(self) -> None:
         """Initialize session by visiting the page to get cookies and CSRF token."""
@@ -105,6 +124,7 @@ class InfoTsinghuaScraper:
             "Origin": self.BASE_URL,
         }
 
+        self._rate_limit()
         response = self._session.post(self.LIST_API, params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
@@ -137,6 +157,7 @@ class InfoTsinghuaScraper:
             "Referer": self.LIST_URL,
         }
 
+        self._rate_limit()
         response = self._session.get(url, headers=headers)
         response.raise_for_status()
         html = response.text
