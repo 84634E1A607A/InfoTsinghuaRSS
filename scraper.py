@@ -281,9 +281,7 @@ class InfoTsinghuaScraper:
                 # Override with detailed content
                 article.update(
                     {
-                        "title": detail.get("title", article["title"]),
                         "content": detail.get("content", ""),
-                        "department": detail.get("department", article["department"]),
                     }
                 )
                 logger.debug(f"Fetched full content for {item['xxid']}")
