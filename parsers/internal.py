@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from html import unescape
 from typing import Any
 
 import requests
@@ -112,6 +113,8 @@ class InternalParser(BaseParser):
                 # Extract content (HTML in 'nr' field)
                 if "nr" in xx_dto:
                     content_html = xx_dto["nr"]
+                    # Decode HTML entities (e.g., &lt;p&gt; -> <p>)
+                    content_html = unescape(content_html)
                     result["content"] = content_html
                     # Extract plain text from HTML
                     soup = self._make_soup(f"<div>{content_html}</div>")
