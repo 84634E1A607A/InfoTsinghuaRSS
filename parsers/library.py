@@ -7,6 +7,7 @@ from typing import Any
 
 from bs4 import BeautifulSoup
 
+from constants import USER_AGENT
 from parsers.base import BaseParser
 
 logger = logging.getLogger(__name__)
@@ -99,6 +100,9 @@ class LibraryParser(BaseParser):
         try:
             # Use provided session or create new one
             req_session = session if session else requests.Session()
+            # Set user agent if we created a new session
+            if not session:
+                req_session.headers.update({"User-Agent": USER_AGENT})
 
             # Fetch with allow_redirects to follow any redirects
             response = req_session.get(url, timeout=10, allow_redirects=True)

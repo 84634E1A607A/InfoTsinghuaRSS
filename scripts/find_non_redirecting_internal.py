@@ -4,6 +4,8 @@
 import sqlite3
 import requests
 
+from constants import USER_AGENT
+
 db_path = "info_rss.db"
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
@@ -27,7 +29,7 @@ for row in rows:
     
     # Follow redirects
     try:
-        response = requests.get(url, allow_redirects=False, timeout=5)
+        response = requests.get(url, allow_redirects=False, timeout=5, headers={"User-Agent": USER_AGENT})
         if response.status_code in (301, 302, 303, 307, 308):
             final_url = response.headers.get('Location', 'unknown')
             print(f"[REDIRECT] {title[:50]}")

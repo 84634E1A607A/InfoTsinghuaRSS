@@ -13,7 +13,8 @@ print(f"Testing InternalParser with: {test_url}\n")
 
 # Fetch the HTML
 import requests
-response = requests.get(test_url)
+from constants import USER_AGENT
+response = requests.get(test_url, headers={"User-Agent": USER_AGENT})
 html = response.text
 
 print(f"Fetched HTML: {len(html)} chars")

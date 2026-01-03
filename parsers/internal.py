@@ -10,6 +10,7 @@ from typing import Any
 import requests
 from bs4 import Tag
 
+from constants import USER_AGENT
 from parsers.base import BaseParser
 
 logger = logging.getLogger(__name__)
@@ -91,6 +92,9 @@ class InternalParser(BaseParser):
 
             # Use provided session or create new one
             req_session = session if session else requests.Session()
+            # Set user agent if we created a new session
+            if not session:
+                req_session.headers.update({"User-Agent": USER_AGENT})
             response = req_session.post(api_url, params=params, timeout=10)
 
             if response.status_code != 200:

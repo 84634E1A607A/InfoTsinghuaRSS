@@ -7,3 +7,5 @@ You have git repository initialized, create commit and manage gitignore as neede
 Manage dependencies with pyproject.toml and use uv to run the app.
 
 Write one-time scripts in scripts/ folder; write main app in . folder; write parser scripts in parsers/ folder.
+
+Make sure your code is resistant to vulnerabilities.
