@@ -28,7 +28,7 @@ SCRAPE_INTERVAL = 60 # Test: 1 minute
 
 # Maximum pages to scrape per run
 # MAX_PAGES_PER_RUN = 10
-MAX_PAGES_PER_RUN = 1 # Test: 1 page
+MAX_PAGES_PER_RUN = 30 # Test: 1 page
 
 # Minimum time between scrapes in seconds (10 minutes)
 # MIN_SCRAPE_INTERVAL = 10 * 60
@@ -57,30 +57,56 @@ async def scrape_articles() -> None:
 
     try:
         with InfoTsinghuaScraper() as scraper:
-            # Fetch recent articles
-            items = scraper.fetch_items(lmid="all", max_pages=MAX_PAGES_PER_RUN, page_size=30)
-            logger.info(f"Fetched {len(items)} items from API")
+            # Calculate cutoff time: last_scrape - scrape_interval
+            # We stop processing when we reach articles older than this
+            cutoff_time_ms = last_scrape - (SCRAPE_INTERVAL * 1000) if last_scrape else 0
 
             new_count = 0
             updated_count = 0
+            skipped_count = 0
             error_count = 0
+            total_items = 0
 
-            for item in items:
-                try:
-                    # Insert or update article using scraper method
-                    state = scraper.upsert_article(item)
-                    if state == ArticleStateEnum.NEW:
-                        new_count += 1
-                    elif state == ArticleStateEnum.UPDATED:
-                        updated_count += 1
-                except (ValueError, KeyError) as e:
-                    # Skip items with missing required fields
-                    error_count += 1
-                    logger.warning(f"Skipping item due to error: {e}")
-                    logger.debug(f"Problematic item: {item}")
+            # Fetch and process pages one at a time
+            for page in range(1, MAX_PAGES_PER_RUN + 1):
+                items = scraper.fetch_list(lmid="all", page=page, page_size=30)
+                if not items:
+                    logger.info(f"No more items on page {page}, stopping")
+                    break
+
+                total_items += len(items)
+                logger.info(f"Fetched page {page}: {len(items)} items")
+
+                for item in items:
+                    # Check if article publish time is before cutoff
+                    publish_time = item.get("fbsj", 0)
+                    if publish_time < cutoff_time_ms:
+                        logger.info(f"Reached article {item.get('xxid')} with publish_time {publish_time} < cutoff {cutoff_time_ms}, stopping")
+                        break
+
+                    try:
+                        # Insert or update article using scraper method
+                        state = scraper.upsert_article(item)
+                        if state == ArticleStateEnum.NEW:
+                            new_count += 1
+                        elif state == ArticleStateEnum.UPDATED:
+                            updated_count += 1
+                        else:
+                            skipped_count += 1
+                    except (ValueError, KeyError) as e:
+                        # Skip items with missing required fields
+                        error_count += 1
+                        logger.warning(f"Skipping item due to error: {e}")
+                        logger.debug(f"Problematic item: {item}")
+                        continue
+                else:
+                    # Continue to next page if inner loop didn't break
                     continue
 
-            logger.info(f"Saved {new_count} new articles, updated {updated_count} existing articles, skipped {error_count} items")
+                # Break outer loop if inner loop broke (reached cutoff)
+                break
+
+            logger.info(f"Fetched {total_items} items total. Saved {new_count} new articles, updated {updated_count} existing articles, skipped {skipped_count} existing, {error_count} errors")
 
             # Update last scrape time
             scrape_end_time = int(datetime.now(timezone.utc).timestamp() * 1000)

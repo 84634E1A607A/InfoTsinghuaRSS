@@ -7,6 +7,8 @@ import logging
 from parsers.career_cic import CareerCicParser
 from parsers.fallback import FallbackParser
 from parsers.internal import InternalParser
+from parsers.library import LibraryParser
+from parsers.myhome import MyhomeParser
 from parsers.simple_table import SimpleTableParser
 from parsers.base import BaseParser
 
@@ -17,13 +19,17 @@ __all__ = [
     "InternalParser",
     "CareerCicParser",
     "SimpleTableParser",
+    "MyhomeParser",
+    "LibraryParser",
     "FallbackParser",
 ]
 
 # Parser registry for automatic selection (ordered by priority)
 PARSERS: list[type[BaseParser]] = [
     InternalParser,
+    MyhomeParser,
     CareerCicParser,
+    LibraryParser,
     SimpleTableParser,
 ]
 
