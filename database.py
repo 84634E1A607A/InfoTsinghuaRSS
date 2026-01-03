@@ -83,7 +83,7 @@ def compute_digest(article: dict[str, Any]) -> str:
     return hashlib.sha256(content_str.encode('utf-8')).hexdigest()
 
 
-def upsert_article(article: dict[str, Any]) -> bool:
+def upsert_article(article: dict[str, Any]) -> int:
     """Insert or update an article.
 
     Args:
@@ -112,7 +112,7 @@ def upsert_article(article: dict[str, Any]) -> bool:
 
         # If article exists and digest is the same, skip update
         if existing and existing["digest"] == digest:
-            return False
+            return 2  # Skipped
 
         # Insert or update article
         cursor = conn.execute(
@@ -144,7 +144,7 @@ def upsert_article(article: dict[str, Any]) -> bool:
         )
         conn.commit()
         # Return True only if it was a new insert
-        return existing is None
+        return 0 if existing is None else 1  # 0: New, 1: Updated
 
 
 def get_recent_articles(limit: int = 100) -> list[dict[str, Any]]:

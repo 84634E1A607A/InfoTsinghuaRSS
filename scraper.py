@@ -9,12 +9,17 @@ import logging
 import re
 import time
 from datetime import datetime, timezone
+from enum import IntEnum
 from typing import Any
 
 import requests
 
 logger = logging.getLogger(__name__)
 
+class ArticleStateEnum(IntEnum):
+    NEW = 0
+    UPDATED = 1
+    SKIPPED = 2
 
 class InfoTsinghuaScraper:
     """Scraper for Tsinghua University Info Portal."""
@@ -247,7 +252,7 @@ class InfoTsinghuaScraper:
 
         return all_items
 
-    def upsert_article(self, item: dict[str, Any]) -> bool:
+    def upsert_article(self, item: dict[str, Any]) -> ArticleStateEnum:
         """Insert or update an article from a list item.
 
         Args:
@@ -277,7 +282,8 @@ class InfoTsinghuaScraper:
             "url": f"{self.BASE_URL}{item['url']}",
         }
 
-        return db_upsert(article)
+        state = db_upsert(article)
+        return ArticleStateEnum(state)
 
     @staticmethod
     def parse_timestamp(timestamp_ms: int) -> datetime:

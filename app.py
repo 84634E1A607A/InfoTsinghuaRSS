@@ -12,7 +12,7 @@ from fastapi import FastAPI, Response
 
 from database import get_last_scrape_time, get_recent_articles, init_db, set_last_scrape_time
 from rss import generate_rss
-from scraper import InfoTsinghuaScraper
+from scraper import ArticleStateEnum, InfoTsinghuaScraper
 
 # Configure logging
 logging.basicConfig(
@@ -68,10 +68,10 @@ async def scrape_articles() -> None:
             for item in items:
                 try:
                     # Insert or update article using scraper method
-                    is_new = scraper.upsert_article(item)
-                    if is_new:
+                    state = scraper.upsert_article(item)
+                    if state == ArticleStateEnum.NEW:
                         new_count += 1
-                    else:
+                    elif state == ArticleStateEnum.UPDATED:
                         updated_count += 1
                 except (ValueError, KeyError) as e:
                     # Skip items with missing required fields
