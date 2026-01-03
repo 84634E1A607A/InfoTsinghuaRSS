@@ -173,71 +173,15 @@ class InfoTsinghuaScraper:
         # Use the appropriate parser for this URL/HTML
         parser = get_parser(final_url, html)
 
-        if parser:
-            # Use the parser to extract content
-            parsed = parser.parse(final_url, html)
-            return {
-                "title": parsed.get("title", ""),
-                "content": parsed.get("content", ""),
-                "department": parsed.get("department", ""),
-                "publish_time": parsed.get("publish_time", ""),
-                "category": "",  # Category not available in detail view
-            }
-        else:
-            # Fallback to basic extraction if no parser found
-            logger.warning(f"No parser found for {final_url}, using basic extraction")
-
-            # Extract title from h2 tag
-            title = ""
-            title_match = re.search(r'<h2[^>]*class="[^"]*detail-title[^"]*"[^>]*>(.*?)</h2>', html, re.DOTALL)
-            if title_match:
-                title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
-            else:
-                # Fallback: any h2 tag
-                title_match = re.search(r'<h2[^>]*>(.*?)</h2>', html, re.DOTALL)
-                if title_match:
-                    title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
-
-            # Extract content from detail-content or content-body div
-            content = ""
-            content_match = re.search(r'<div[^>]*class="[^"]*detail-content[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
-            if not content_match:
-                content_match = re.search(r'<div[^>]*class="[^"]*content-body[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
-            if content_match:
-                content = content_match.group(0)
-
-            # Extract metadata from detail-meta div
-            department = ""
-            publish_time = ""
-
-            # Try to find department
-            dept_patterns = [
-                r'<span[^>]*>[^<]*发布单位[：:]\s*([^<]+)</span>',
-                r'<span[^>]*class="[^"]*department[^"]*"[^>]*>([^<]+)</span>',
-            ]
-            for pattern in dept_patterns:
-                match = re.search(pattern, html)
-                if match:
-                    department = match.group(1).strip()
-                    break
-
-            # Try to find publish time
-            time_patterns = [
-                r'<span[^>]*>[^<]*发布时间[：:]\s*([^<]+)</span>',
-            ]
-            for pattern in time_patterns:
-                match = re.search(pattern, html)
-                if match:
-                    publish_time = match.group(1).strip()
-                    break
-
-            return {
-                "title": title,
-                "content": content,
-                "department": department,
-                "publish_time": publish_time,
-                "category": "",
-            }
+        # Use the parser to extract content
+        parsed = parser.parse(final_url, html)
+        return {
+            "title": parsed.get("title", ""),
+            "content": parsed.get("content", ""),
+            "department": parsed.get("department", ""),
+            "publish_time": parsed.get("publish_time", ""),
+            "category": "",  # Category not available in detail view
+        }
 
     def fetch_items(
         self,

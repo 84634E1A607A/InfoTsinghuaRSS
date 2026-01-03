@@ -21,11 +21,10 @@ class InternalParser(BaseParser):
             html: The HTML content to check
 
         Returns:
-            True if URL is from info.tsinghua.edu.cn and has internal structure
+            True if URL is from info.tsinghua.edu.cn detail page
         """
-        is_internal = "info.tsinghua.edu.cn" in url
-        has_content_marker = 'class="jianjie xiangqingchakan"' in html
-        return is_internal and has_content_marker
+        is_internal = "info.tsinghua.edu.cn" in url and "/template/detail" in url
+        return is_internal
 
     def parse(self, url: str, html: str) -> dict[str, Any]:
         """Parse internal page content.
