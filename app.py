@@ -299,6 +299,24 @@ async def rotate_token(
     }
 
 
+@app.delete("/auth/user")
+async def delete_user(
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, str]:
+    """Delete the current user and all associated data."""
+    from auth_db import delete_user
+
+    deleted = delete_user(current_user["user_id"])
+
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    return {"message": "User deleted successfully"}
+
+
 # =============================================================================
 # RSS Feed Endpoint (Protected)
 # =============================================================================

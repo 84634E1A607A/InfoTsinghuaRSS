@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Token Manager - Info Tsinghua RSS</title>
 </head>
+
 <body>
     <h1>Authentication Token Manager</h1>
 
@@ -17,35 +19,25 @@
         <h2>Your API Token</h2>
         <div id="user-info"></div>
 
-        <div id="token-display" style="display: none;">
-            <h3>Current Token</h3>
-            <p><strong>Save this token!</strong> You'll need it to access the RSS feed.</p>
-            <input type="text" id="user-token" readonly style="width: 400px;">
-            <button onclick="copyToken()">Copy</button>
-
-            <h4>Actions</h4>
+        <input type="text" id="user-token" readonly style="width: 400px; display: none;">
+        <p>
             <button onclick="rotateCurrentToken()">Rotate Token</button>
-            <p><small>Rotating will invalidate the current token and create a new one.</small></p>
-        </div>
-
+            Rotating will invalidate the current token and create a new one.
+        </p>
+        <p>
+            <button onclick="deleteUser()">Delete Account</button>
+            Deleting your account is permanent and cannot be undone.
+        </p>
         <div id="no-token" style="display: none;">
             <p>No token found. Please contact support.</p>
         </div>
 
-        <h3>RSS Feed URL</h3>
+        <h2>RSS Feed URL</h2>
         <p>Use your token to access the RSS feed:</p>
         <input type="text" id="feed-url" readonly style="width: 500px;">
         <button onclick="copyFeedUrl()">Copy</button>
 
-        <h3>Usage Instructions</h3>
-        <ul>
-            <li><strong>Header method:</strong> <code>X-API-Token: your-token</code></li>
-            <li><strong>Bearer method:</strong> <code>Authorization: Bearer your-token</code></li>
-            <li><strong>Query parameter:</strong> <code>?token=your-token</code></li>
-        </ul>
-
-        <p><a id="rss-link" href="/rss">View RSS Feed</a></p>
-        <p><a href="/docs">API Documentation</a></p>
+        <p><a id="rss-link" href="/rss">View RSS Feed</a> <a href="/docs">API Documentation</a></p>
     </div>
 
     <div id="error-message" style="display: none; color: red;"></div>
@@ -115,7 +107,6 @@
                     // Display the first (and should be only) token
                     // Token is already set from currentToken variable
                     document.getElementById('user-token').value = currentToken || 'YOUR_TOKEN_HERE';
-                    document.getElementById('token-display').style.display = 'block';
                     document.getElementById('no-token').style.display = 'none';
 
                     // Update feed URL and RSS link
@@ -173,6 +164,42 @@
             }
         }
 
+        // Delete user account
+        async function deleteUser() {
+            if (!currentToken) {
+                showError('No authentication token');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete your account? This action CANNOT be undone.\n\nAll your data will be permanently deleted.')) {
+                return;
+            }
+
+            if (!confirm('This is your last chance! Your account and all associated data will be permanently deleted.\n\nType "DELETE" to confirm.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/user?token=${encodeURIComponent(currentToken)}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete account');
+                }
+
+                // Clear local storage
+                localStorage.removeItem('rss_token');
+
+                alert('Your account has been deleted successfully.');
+
+                // Redirect to home
+                window.location.href = '/';
+            } catch (error) {
+                showError('Failed to delete account: ' + error.message);
+            }
+        }
+
         // Copy token to clipboard
         function copyToken() {
             const tokenField = document.getElementById('user-token');
@@ -221,4 +248,5 @@
         checkAuth();
     </script>
 </body>
+
 </html>

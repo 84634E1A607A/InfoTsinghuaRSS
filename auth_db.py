@@ -289,3 +289,19 @@ def list_user_tokens(user_id: int, limit: int = 10) -> list[dict[str, Any]]:
                 "created_at": row["created_at"],
             }
         ]
+
+
+def delete_user(user_id: int) -> bool:
+    """Delete a user and all associated data.
+
+    Args:
+        user_id: User database ID
+
+    Returns:
+        True if user was deleted, False if not found
+    """
+    with get_db_connection() as conn:
+        cursor = conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+
+        return cursor.rowcount > 0
