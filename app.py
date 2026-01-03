@@ -13,6 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from auth import (
     get_current_user,
+    get_current_user_from_path,
     get_current_user_optional,
     get_gitlab_authorization_url,
     handle_gitlab_callback,
@@ -276,30 +277,9 @@ async def list_tokens(
     return tokens
 
 
-@app.delete("/auth/tokens/{token}")
-async def delete_token(
-    token: str,
-    current_user: dict[str, Any] = Depends(get_current_user),
-) -> dict[str, str]:
-    """Delete an auth token (clear user's token)."""
-    from database import get_db_connection
-
-    now = current_timestamp_ms()
-
-    with get_db_connection() as conn:
-        conn.execute(
-            "UPDATE users SET token = NULL, token_last_used_at = NULL, updated_at = ? WHERE id = ?",
-            (now, current_user["user_id"]),
-        )
-        conn.commit()
-
-    return {"message": "Token deleted successfully"}
-
-
 @app.post("/auth/tokens/{token}/rotate")
 async def rotate_token(
-    token: str,
-    current_user: dict[str, Any] = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user_from_path),
 ) -> dict[str, str]:
     """Rotate an auth token (create new, delete old)."""
     from auth_db import rotate_user_token

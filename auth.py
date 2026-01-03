@@ -242,3 +242,26 @@ async def get_current_user(
         )
 
     return user_data
+
+
+async def get_current_user_from_path(token: str) -> dict[str, Any]:
+    """Get current user from path parameter token.
+
+    Args:
+        token: API token from path parameter
+
+    Returns:
+        User dictionary
+
+    Raises:
+        HTTPException: If token is invalid or missing
+    """
+    user_data = validate_auth_token(token)
+
+    if not user_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token",
+        )
+
+    return user_data
