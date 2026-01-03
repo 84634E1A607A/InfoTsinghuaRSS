@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from auth import (
@@ -38,7 +37,13 @@ from config import (
     USER_RATE_LIMIT_PER_HOUR,
     USER_RATE_LIMIT_PER_SECOND,
 )
-from database import get_last_scrape_time, get_recent_articles, init_db, set_last_scrape_time
+from database import (
+    current_timestamp_ms,
+    get_last_scrape_time,
+    get_recent_articles,
+    init_db,
+    set_last_scrape_time,
+)
 from rate_limit import check_rate_limit
 from rss import generate_rss, validate_category_input
 from scraper import ArticleStateEnum, InfoTsinghuaScraper
@@ -59,7 +64,7 @@ async def scrape_articles() -> None:
     """Scrape articles and save to database."""
     # Check if we scraped recently
     last_scrape = get_last_scrape_time()
-    now = int(datetime.now(timezone.utc).timestamp() * 1000)
+    now = current_timestamp_ms()
 
     if last_scrape:
         time_since_last_scrape = (now - last_scrape) / 1000  # Convert to seconds
@@ -130,7 +135,7 @@ async def scrape_articles() -> None:
             )
 
             # Update last scrape time
-            scrape_end_time = int(datetime.now(timezone.utc).timestamp() * 1000)
+            scrape_end_time = current_timestamp_ms()
             set_last_scrape_time(scrape_end_time)
             logger.info("Updated last scrape timestamp")
 
@@ -195,12 +200,9 @@ async def root(
 
 @app.get("/api/status")
 async def api_status(
-    request: Request,
-    token: str | None = Query(None, description="Authentication token"),
+    current_user: dict[str, Any] | None = Depends(get_current_user_optional),
 ) -> dict[str, Any]:
     """API status endpoint for frontend authentication check."""
-    current_user = get_current_user_optional(request, token=None, query_token=token)
-
     response = {
         "auth_enabled": OAUTH_ENABLED,
         "authenticated": current_user is not None,
@@ -280,26 +282,9 @@ async def delete_token(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, str]:
     """Delete an auth token (clear user's token)."""
-
-    # Verify token belongs to user
-    user_data = get_current_user_optional(
-        Request({"type": "http", "headers": {}, "query_params": {}, "path_params": {}}),
-        token=None,
-        query_token=token,
-    )
-
-    if not user_data or user_data["user_id"] != current_user["user_id"]:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Token not found",
-        )
-
-    # Clear the token by setting it to NULL
-    import datetime
-
     from database import get_db_connection
 
-    now = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+    now = current_timestamp_ms()
 
     with get_db_connection() as conn:
         conn.execute(
@@ -319,19 +304,6 @@ async def rotate_token(
     """Rotate an auth token (create new, delete old)."""
     from auth_db import rotate_user_token
 
-    # Verify token belongs to user
-    user_data = get_current_user_optional(
-        Request({"type": "http", "headers": {}, "query_params": {}, "path_params": {}}),
-        token=None,
-        query_token=token,
-    )
-
-    if not user_data or user_data["user_id"] != current_user["user_id"]:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Token not found",
-        )
-
     new_token = rotate_user_token(current_user["user_id"])
 
     if not new_token:
@@ -343,7 +315,7 @@ async def rotate_token(
     return {
         "token": new_token,
         "message": "Token rotated successfully",
-        "instructions": "Use the new token with X-API-Token header to access /rss",
+        "instructions": "Use the new token with ?token= query parameter to access /rss",
     }
 
 
@@ -354,39 +326,32 @@ async def rotate_token(
 
 @app.get("/rss")
 async def rss_feed(
-    request: Request,
     category_in: list[str] | None = Query(
         None, description="Categories to filter in (only these categories)"
     ),
     category_not_in: list[str] | None = Query(
         None, alias="not_in", description="Categories to filter out (exclude these categories)"
     ),
-    token: str | None = Query(
-        None, description="Authentication token (can also use X-API-Token header)"
-    ),
+    current_user: dict[str, Any] | None = Depends(get_current_user_optional),
 ) -> Response:
     """Generate and return RSS feed (requires authentication).
 
     Query Parameters:
     - category_in: Filter to only include articles with these categories (e.g., ?category_in=通知&category_in=公告)
     - not_in: Exclude articles with these categories (e.g., ?not_in=招聘&not_in=讲座)
-    - token: Authentication token (alternative to X-API-Token header)
+    - token: Authentication token (required if OAuth enabled)
 
     Authentication:
-    - Use X-API-Token header or ?token= query parameter
+    - Use ?token= query parameter
     - Get a token by visiting /auth/login (GitLab OAuth)
 
     Rate Limiting:
     - Authenticated users: 1 request/second, 10 requests/hour
     """
-    # Extract and validate token
-    current_user = get_current_user_optional(request, token=None, query_token=token)
-
     if OAUTH_ENABLED and not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required. Visit /auth/login to authenticate",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     # Apply per-user rate limiting for authenticated users

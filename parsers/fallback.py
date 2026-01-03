@@ -49,7 +49,6 @@ class FallbackParser(BaseParser):
         result: dict[str, Any] = {
             "title": "",
             "content": "",
-            "plain_text": "",
             "department": "",
             "publish_time": "",
         }
@@ -82,7 +81,6 @@ class FallbackParser(BaseParser):
                 text = content_elem.get_text(strip=True)
                 if len(text) > 100:
                     result["content"] = self._clean_html(content_elem)
-                    result["plain_text"] = text
                     logger.info(f"Fallback parser found content in {selector}")
                     break
 
@@ -95,14 +93,14 @@ class FallbackParser(BaseParser):
                     script.decompose()
 
                 result["content"] = self._clean_html(body)
-                result["plain_text"] = self._extract_text(body)
                 logger.info("Fallback parser using body content")
 
         # Log extraction results
+        content_length = len(soup.get_text(strip=True)) if result["content"] else 0
         logger.warning(
             f"Fallback parser extraction results for {url}:\n"
             f"  Title: {'✓' if result['title'] else '✗'} ({len(result['title'])} chars)\n"
-            f"  Content: {'✓' if result['content'] else '✗'} ({len(result['plain_text'])} chars)"
+            f"  Content: {'✓' if result['content'] else '✗'} ({content_length} chars)"
         )
 
         return result

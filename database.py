@@ -13,6 +13,15 @@ from typing import Any
 from config import DB_PATH
 
 
+def current_timestamp_ms() -> int:
+    """Get current UTC timestamp in milliseconds.
+
+    Returns:
+        Current timestamp as integer milliseconds since Unix epoch
+    """
+    return int(datetime.now(timezone.utc).timestamp() * 1000)
+
+
 def _ensure_db_permissions() -> None:
     """Ensure database file has restrictive permissions."""
     try:
@@ -154,7 +163,7 @@ def upsert_article(article: dict[str, Any]) -> int:
     validate_article(article)
 
     digest = compute_digest(article)
-    now = int(datetime.now(timezone.utc).timestamp() * 1000)
+    now = current_timestamp_ms()
 
     with get_db_connection() as conn:
         # Check if article exists with same digest

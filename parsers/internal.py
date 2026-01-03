@@ -49,7 +49,6 @@ class InternalParser(BaseParser):
         result: dict[str, Any] = {
             "title": "",
             "content": "",
-            "plain_text": "",
             "department": "",
             "publish_time": "",
         }
@@ -123,9 +122,6 @@ class InternalParser(BaseParser):
                     # Decode HTML entities (e.g., &lt;p&gt; -> <p>)
                     content_html = unescape(content_html)
                     result["content"] = content_html
-                    # Extract plain text from HTML
-                    soup = self._make_soup(f"<div>{content_html}</div>")
-                    result["plain_text"] = self._extract_text(soup)
 
                 # Extract department
                 if "dw" in xx_dto:
@@ -173,7 +169,6 @@ class InternalParser(BaseParser):
 
         if content_elem:
             result["content"] = self._clean_html(content_elem)
-            result["plain_text"] = self._extract_text(content_elem)
 
         # Extract department from label#fromFlag
         dept_label = soup.find("label", id="fromFlag")

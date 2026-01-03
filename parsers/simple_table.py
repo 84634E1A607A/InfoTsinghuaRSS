@@ -55,7 +55,6 @@ class SimpleTableParser(BaseParser):
         result: dict[str, Any] = {
             "title": "",
             "content": "",
-            "plain_text": "",
             "department": "",
             "publish_time": "",
         }
@@ -131,7 +130,6 @@ class SimpleTableParser(BaseParser):
             text = content_td.get_text(strip=True)
             if len(text) > 50:
                 result["content"] = self._clean_html(content_td)
-                result["plain_text"] = text
                 content_found = True
 
         # Second try: div.content
@@ -141,7 +139,6 @@ class SimpleTableParser(BaseParser):
                 text = content_div.get_text(strip=True)
                 if len(text) > 50:
                     result["content"] = self._clean_html(content_div)
-                    result["plain_text"] = text
                     content_found = True
 
         # Third try: find p tags with substantial content
@@ -150,7 +147,6 @@ class SimpleTableParser(BaseParser):
                 text = p.get_text(strip=True)
                 if len(text) > 100:  # Look for substantial paragraphs
                     result["content"] = self._clean_html(p.parent if p.parent else p)
-                    result["plain_text"] = text
                     content_found = True
                     break
 

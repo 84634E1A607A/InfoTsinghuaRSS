@@ -44,7 +44,6 @@ class LibraryParser(BaseParser):
         result: dict[str, Any] = {
             "title": "",
             "content": "",
-            "plain_text": "",
             "department": "",
             "publish_time": "",
         }
@@ -69,7 +68,6 @@ class LibraryParser(BaseParser):
         content_elem = soup.find("div", class_="v_news_content")
         if content_elem:
             result["content"] = self._clean_html(content_elem)
-            result["plain_text"] = self._extract_text(content_elem)
 
         # Extract publish time from div.date
         time_elem = soup.find("div", class_="date")

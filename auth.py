@@ -6,8 +6,7 @@ import secrets
 from typing import Any
 
 import httpx
-from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import APIKeyHeader, HTTPBearer
+from fastapi import HTTPException, Query, status
 
 from auth_db import (
     create_or_update_user,
@@ -21,10 +20,6 @@ from config import (
     GITLAB_URL,
     SESSION_SECRET,
 )
-
-# Security schemes
-api_key_header = APIKeyHeader(name="X-API-Token", auto_error=False)
-http_bearer = HTTPBearer(auto_error=False)
 
 
 class OAuthStateManager:
@@ -207,72 +202,30 @@ async def handle_gitlab_callback(code: str, state: str) -> dict[str, Any]:
     }
 
 
-def extract_token_from_request(request: Request) -> str | None:
-    """Extract authentication token from request headers or query parameters.
-
-    Args:
-        request: FastAPI request
-
-    Returns:
-        Token string if found, None otherwise
-    """
-    # Try X-API-Token header first
-    token = request.headers.get("X-API-Token")
-
-    # Try Bearer token
-    if not token:
-        authorization = request.headers.get("Authorization")
-        if authorization and authorization.startswith("Bearer "):
-            token = authorization[7:]
-
-    # Try query parameter
-    if not token:
-        token = request.query_params.get("token")
-
-    return token
-
-
 def get_current_user_optional(
-    request: Request,
-    token: str | None = Depends(api_key_header),
-    query_token: str | None = None,
+    token: str | None = Query(None),
 ) -> dict[str, Any] | None:
     """Get current user from token (optional).
 
     Args:
-        request: FastAPI request
-        token: API token from header
-        query_token: API token from query parameter
+        token: API token from query parameter
 
     Returns:
         User dictionary if valid token, None otherwise
     """
     if not token:
-        # Try Bearer token
-        authorization = request.headers.get("Authorization")
-        if authorization and authorization.startswith("Bearer "):
-            token = authorization[7:]
-
-    # Use query token if header token not present
-    if not token and query_token:
-        token = query_token
-
-    if not token:
         return None
 
-    user_data = validate_auth_token(token)
-    return user_data
+    return validate_auth_token(token)
 
 
 async def get_current_user(
-    request: Request,
-    token: str | None = Depends(api_key_header),
+    token: str = Query(...),
 ) -> dict[str, Any]:
     """Get current user from token (required).
 
     Args:
-        request: FastAPI request
-        token: API token from header
+        token: API token from query parameter
 
     Returns:
         User dictionary
@@ -280,13 +233,12 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or missing
     """
-    user_data = get_current_user_optional(request, token)
+    user_data = validate_auth_token(token)
 
     if not user_data:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing authentication token",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     return user_data

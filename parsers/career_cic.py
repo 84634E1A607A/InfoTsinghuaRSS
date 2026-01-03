@@ -40,7 +40,6 @@ class CareerCicParser(BaseParser):
         result: dict[str, Any] = {
             "title": "",
             "content": "",
-            "plain_text": "",
             "department": "",
             "publish_time": "",
         }
@@ -67,13 +66,11 @@ class CareerCicParser(BaseParser):
         content_div = soup.find("div", class_="content teacher")
         if content_div:
             result["content"] = self._clean_html(content_div)
-            result["plain_text"] = self._extract_text(content_div)
         else:
             # Second try: td.td4 or similar
             content_td = soup.find("td", class_=lambda x: x and "td4" in x.split())
             if content_td:
                 result["content"] = self._clean_html(content_td)
-                result["plain_text"] = self._extract_text(content_td)
             else:
                 # Fallback: try to find the main content area
                 # Look for table cells with substantial content
@@ -82,7 +79,6 @@ class CareerCicParser(BaseParser):
                     # Look for cells with substantial content (more than 100 chars)
                     if len(text) > 100:
                         result["content"] = self._clean_html(td)
-                        result["plain_text"] = text
                         break
 
         # For career pages, department and time might not be available

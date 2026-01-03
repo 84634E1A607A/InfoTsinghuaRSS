@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
 from typing import Any
 
-from database import get_db_connection
+from database import current_timestamp_ms, get_db_connection
 
 
 def init_auth_db() -> None:
@@ -54,7 +53,7 @@ def create_or_update_user(gitlab_user: dict[str, Any]) -> int:
     Returns:
         User database ID
     """
-    now = int(datetime.now(timezone.utc).timestamp() * 1000)
+    now = current_timestamp_ms()
 
     with get_db_connection() as conn:
         # Try to insert or update
@@ -143,7 +142,7 @@ def create_or_reset_user_token(user_id: int) -> str:
     """
     # Generate token
     token = str(uuid.uuid4())
-    now = int(datetime.now(timezone.utc).timestamp() * 1000)
+    now = current_timestamp_ms()
 
     with get_db_connection() as conn:
         conn.execute(
@@ -202,7 +201,7 @@ def validate_auth_token(token: str) -> dict[str, Any] | None:
             return None
 
         # Update last used timestamp
-        now = int(datetime.now(timezone.utc).timestamp() * 1000)
+        now = current_timestamp_ms()
         conn.execute(
             "UPDATE users SET token_last_used_at = ? WHERE token = ?",
             (now, token),
@@ -230,7 +229,7 @@ def rotate_user_token(user_id: int) -> str | None:
     """
     # Generate new token
     new_token = str(uuid.uuid4())
-    now = int(datetime.now(timezone.utc).timestamp() * 1000)
+    now = current_timestamp_ms()
 
     with get_db_connection() as conn:
         # Check user exists and get old token

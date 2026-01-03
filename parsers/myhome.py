@@ -40,7 +40,6 @@ class MyhomeParser(BaseParser):
         result: dict[str, Any] = {
             "title": "",
             "content": "",
-            "plain_text": "",
             "department": "",
             "publish_time": "",
         }
@@ -56,7 +55,6 @@ class MyhomeParser(BaseParser):
         content_elem = soup.find("span", id="News_notice_DetailCtrl1_lblquality_content")
         if content_elem:
             result["content"] = self._clean_html(content_elem)
-            result["plain_text"] = self._extract_text(content_elem)
 
         # Extract publish time and department from lbladd_time
         time_elem = soup.find("span", id="News_notice_DetailCtrl1_lbladd_time")

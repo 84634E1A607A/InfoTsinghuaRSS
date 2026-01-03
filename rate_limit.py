@@ -4,22 +4,11 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
-from dataclasses import dataclass
 
-
-@dataclass
-class RateLimitTracker:
-    """Track rate limit for a single user."""
-
-    second_window_start: float = 0.0
-    second_count: int = 0
-    hour_window_start: float = 0.0
-    hour_count: int = 0
-
-
-# In-memory storage for rate limiting
-# user_id -> RateLimitTracker
-_rate_limit_store: dict[int, RateLimitTracker] = defaultdict(RateLimitTracker)
+# In-memory rate limit tracking: user_id -> [(window_start, count)]
+_rate_limit_store: dict[int, dict[str, tuple[float, int]]] = defaultdict(
+    lambda: {"second": (0.0, 0), "hour": (0.0, 0)}
+)
 
 
 def check_rate_limit(user_id: int, window_seconds: int, max_requests: int) -> tuple[bool, int]:
@@ -27,49 +16,22 @@ def check_rate_limit(user_id: int, window_seconds: int, max_requests: int) -> tu
 
     Args:
         user_id: User database ID
-        window_seconds: Time window in seconds
+        window_seconds: Time window in seconds (1 or 3600)
         max_requests: Maximum requests allowed in window
 
     Returns:
         Tuple of (allowed, remaining_requests)
     """
     now = time.time()
-    tracker = _rate_limit_store[user_id]
+    key = "second" if window_seconds == 1 else "hour"
+    window_start, count = _rate_limit_store[user_id][key]
 
-    if window_seconds == 1:
-        # Per-second rate limit
-        window_start = tracker.second_window_start
-        if now - window_start >= 1.0:
-            # Window expired, reset
-            tracker.second_window_start = now
-            tracker.second_count = 1
-            return True, max_requests - 1
+    if now - window_start >= window_seconds:
+        _rate_limit_store[user_id][key] = (now, 1)
+        return True, max_requests - 1
 
-        if tracker.second_count >= max_requests:
-            return False, 0
+    if count >= max_requests:
+        return False, 0
 
-        tracker.second_count += 1
-        remaining = max_requests - tracker.second_count
-        return True, remaining
-    else:
-        # Per-hour rate limit
-        window_start = tracker.hour_window_start
-        if now - window_start >= 3600.0:
-            # Window expired, reset
-            tracker.hour_window_start = now
-            tracker.hour_count = 1
-            return True, max_requests - 1
-
-        if tracker.hour_count >= max_requests:
-            return False, 0
-
-        tracker.hour_count += 1
-        remaining = max_requests - tracker.hour_count
-        return True, remaining
-
-
-def cleanup_old_rate_limit_data() -> None:
-    """Clean up old rate limit data (no-op for in-memory)."""
-    # In implementation, we could periodically clean up old entries
-    # For now, this is a no-op since the store is relatively small
-    pass
+    _rate_limit_store[user_id][key] = (window_start, count + 1)
+    return True, max_requests - count - 1

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -42,7 +41,6 @@ class BaseParser(ABC):
             Dictionary with keys:
                 - title: Article title
                 - content: HTML content
-                - plain_text: Plain text content
                 - department: Publishing department (if available)
                 - publish_time: Publish time string (if available)
         """
@@ -73,20 +71,3 @@ class BaseParser(ABC):
             script.decompose()
 
         return str(element)
-
-    def _extract_text(self, element: Tag) -> str:
-        """Extract and clean text from HTML element.
-
-        Args:
-            element: BeautifulSoup Tag element
-
-        Returns:
-            Cleaned text string
-        """
-        # Get text and clean up whitespace
-        text = element.get_text(separator=" ", strip=True)
-
-        # Clean up extra whitespace
-        text = re.sub(r"\s+", " ", text)
-
-        return text.strip()
