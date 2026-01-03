@@ -111,3 +111,12 @@ SERVER_PORT = 8000
 
 # Encodings to try for library pages (in order)
 LIBRARY_ENCODINGS = ["utf-8-sig", "gbk", "gb2312", "gb18030", "utf-8"]
+
+
+# =============================================================================
+# Rate Limiting Settings
+# =============================================================================
+
+# Rate limiting for RSS endpoints (requests per minute)
+RATE_LIMIT_REQUESTS = 30
+RATE_LIMIT_PERIOD = 60  # seconds

@@ -9,6 +9,9 @@ from datetime import datetime, timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Query, Response
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from config import (
     API_DESCRIPTION,
@@ -17,13 +20,15 @@ from config import (
     MAX_PAGES_PER_RUN,
     MAX_RSS_ITEMS,
     MIN_SCRAPE_INTERVAL,
+    RATE_LIMIT_PERIOD,
+    RATE_LIMIT_REQUESTS,
     RSS_CACHE_MAX_AGE,
     SCRAPE_INTERVAL,
     SERVER_HOST,
     SERVER_PORT,
 )
 from database import get_last_scrape_time, get_recent_articles, init_db, set_last_scrape_time
-from rss import generate_rss
+from rss import generate_rss, validate_category_input
 from scraper import ArticleStateEnum, InfoTsinghuaScraper
 
 # Configure logging
@@ -34,7 +39,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
 scheduler = AsyncIOScheduler()
 
 
@@ -93,8 +99,7 @@ async def scrape_articles() -> None:
                     except (ValueError, KeyError) as e:
                         # Skip items with missing required fields
                         error_count += 1
-                        logger.warning(f"Skipping item due to error: {e}")
-                        logger.debug(f"Problematic item: {item}")
+                        logger.warning(f"Skipping item {item.get('xxid', 'UNKNOWN')} due to error: {e}")
                         continue
                 else:
                     # Continue to next page if inner loop didn't break
@@ -150,6 +155,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Add rate limiting exception handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 @app.get("/")
 async def root() -> dict[str, str]:
@@ -162,6 +171,7 @@ async def root() -> dict[str, str]:
 
 
 @app.get("/rss")
+@limiter.limit(f"{RATE_LIMIT_REQUESTS}/{RATE_LIMIT_PERIOD}")
 async def rss_feed(
     category_in: list[str] | None = Query(None, description="Categories to filter in (only these categories)"),
     category_not_in: list[str] | None = Query(None, alias="not_in", description="Categories to filter out (exclude these categories)"),
@@ -172,6 +182,10 @@ async def rss_feed(
     - category_in: Filter to only include articles with these categories (e.g., ?category_in=通知&category_in=公告)
     - not_in: Exclude articles with these categories (e.g., ?not_in=招聘&not_in=讲座)
     """
+    # Validate category inputs
+    category_in = validate_category_input(category_in)
+    category_not_in = validate_category_input(category_not_in)
+
     rss_xml = generate_rss(
         limit=MAX_RSS_ITEMS,
         categories_in=category_in,
@@ -188,6 +202,7 @@ async def rss_feed(
 
 
 @app.get("/health")
+@limiter.limit(f"{RATE_LIMIT_REQUESTS}/{RATE_LIMIT_PERIOD}")
 async def health() -> dict[str, str]:
     """Health check endpoint."""
     _ = get_recent_articles(limit=1)

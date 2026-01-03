@@ -99,7 +99,7 @@ class InfoTsinghuaScraper:
                         self._csrf_token = cookie.value
                         break
 
-        logger.info(f"Got {len(self._session.cookies)} cookies and CSRF token: {self._csrf_token[:20] if self._csrf_token else 'EMPTY'}...")
+        logger.info(f"Got {len(self._session.cookies)} cookies and CSRF token")
 
     def fetch_list(
         self,
@@ -243,6 +243,21 @@ class InfoTsinghuaScraper:
         missing_fields = [field for field in required_fields if field not in item or not item[field]]
         if missing_fields:
             raise ValueError(f"Missing required fields: {missing_fields}")
+
+        # Validate URL path to prevent path traversal
+        url_path = item.get("url", "")
+        if not isinstance(url_path, str):
+            raise ValueError(f"URL must be string, got {type(url_path)}")
+
+        # Check for path traversal attempts
+        if ".." in url_path or url_path.startswith("/"):
+            raise ValueError(f"Invalid URL path: {url_path}")
+
+        # Validate field lengths
+        if len(str(item.get("xxid", ""))) > 100:
+            raise ValueError("Article ID too long")
+        if len(str(item.get("bt", ""))) > 500:
+            raise ValueError("Title too long")
 
         # Build basic article from list item
         article = {

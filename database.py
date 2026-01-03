@@ -3,12 +3,25 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import sqlite3
+import stat
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
 
 from config import DB_PATH
+
+
+def _ensure_db_permissions() -> None:
+    """Ensure database file has restrictive permissions."""
+    try:
+        if DB_PATH.exists():
+            # Set file permissions to 0600 (owner read/write only)
+            os.chmod(DB_PATH, stat.S_IRUSR | stat.S_IWUSR)
+    except OSError:
+        # Silently fail on systems that don't support Unix permissions
+        pass
 
 
 @contextmanager
@@ -66,6 +79,9 @@ def init_db() -> None:
 
         conn.commit()
 
+    # Ensure restrictive permissions on database file
+    _ensure_db_permissions()
+
 
 def compute_digest(article: dict[str, Any]) -> str:
     """Compute a digest hash for an article.
@@ -79,6 +95,44 @@ def compute_digest(article: dict[str, Any]) -> str:
     # Create a string with all relevant fields for deduplication
     content_str = f"{article.get('title', '')}|{article.get('content', '')}|{article.get('department', '')}|{article.get('category', '')}"
     return hashlib.sha256(content_str.encode('utf-8')).hexdigest()
+
+
+def validate_article(article: dict[str, Any]) -> None:
+    """Validate article data before database insertion.
+
+    Args:
+        article: Article dictionary to validate
+
+    Raises:
+        ValueError: If article data is invalid
+    """
+    # Validate required string fields and their lengths
+    string_fields = {
+        "xxid": 100,
+        "title": 1000,
+        "url": 2000,
+        "department": 200,
+        "category": 100,
+    }
+
+    for field, max_length in string_fields.items():
+        if field in article and article[field] is not None:
+            if not isinstance(article[field], str):
+                raise ValueError(f"{field} must be string")
+            if len(article[field]) > max_length:
+                raise ValueError(f"{field} exceeds maximum length of {max_length}")
+
+    # Validate publish_time is a valid timestamp
+    if "publish_time" in article:
+        if not isinstance(article["publish_time"], int):
+            raise ValueError("publish_time must be integer")
+
+    # Validate content length (can be very long for HTML)
+    if "content" in article and article["content"] is not None:
+        if not isinstance(article["content"], str):
+            raise ValueError("content must be string")
+        if len(article["content"]) > 1_000_000:  # 1MB limit
+            raise ValueError("content exceeds maximum length of 1MB")
 
 
 def upsert_article(article: dict[str, Any]) -> int:
@@ -97,6 +151,9 @@ def upsert_article(article: dict[str, Any]) -> int:
     Returns:
         True if the article was newly inserted, False if updated or skipped
     """
+    # Validate article data before insertion
+    validate_article(article)
+
     digest = compute_digest(article)
     now = int(datetime.now(timezone.utc).timestamp() * 1000)
 
@@ -141,8 +198,12 @@ def upsert_article(article: dict[str, Any]) -> int:
             ),
         )
         conn.commit()
-        # Return True only if it was a new insert
-        return 0 if existing is None else 1  # 0: New, 1: Updated
+
+    # Ensure permissions remain restrictive after database modifications
+    _ensure_db_permissions()
+
+    # Return True only if it was a new insert
+    return 0 if existing is None else 1  # 0: New, 1: Updated
 
 
 def get_recent_articles(limit: int = 100) -> list[dict[str, Any]]:

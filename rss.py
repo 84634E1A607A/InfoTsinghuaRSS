@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import logging
 import re
-import sqlite3
 from datetime import datetime, timezone
 from typing import Any
 
@@ -17,6 +17,52 @@ from config import (
     MAX_RSS_ITEMS_LIMIT,
 )
 from database import get_db_connection
+
+logger = logging.getLogger(__name__)
+
+
+def validate_category_input(categories: list[str] | None) -> list[str]:
+    """Validate and sanitize category input parameters.
+
+    Args:
+        categories: List of category strings to validate
+
+    Returns:
+        Sanitized list of valid category strings
+
+    Raises:
+        ValueError: If categories contain invalid data
+    """
+    if not categories:
+        return []
+
+    # Limit number of categories to prevent abuse
+    if len(categories) > 20:
+        raise ValueError("Too many categories specified (maximum: 20)")
+
+    validated = []
+    for category in categories:
+        # Ensure category is a string
+        if not isinstance(category, str):
+            raise ValueError(f"Category must be string, got {type(category)}")
+
+        # Remove leading/trailing whitespace
+        category = category.strip()
+
+        # Validate length
+        if len(category) == 0:
+            continue
+        if len(category) > 100:
+            raise ValueError(f"Category too long (maximum: 100 characters)")
+
+        # Validate character set (allow common Chinese characters, letters, numbers, punctuation)
+        # This prevents injection attempts while allowing legitimate content
+        if not re.match(r'^[\w\s\u4e00-\u9fff\-_.（）()]+$', category):
+            raise ValueError(f"Category contains invalid characters: {category}")
+
+        validated.append(category)
+
+    return validated
 
 
 def strip_styles_from_html(html: str) -> str:
@@ -64,6 +110,10 @@ def generate_rss(
         limit = 100
     elif limit > MAX_RSS_ITEMS_LIMIT:
         limit = MAX_RSS_ITEMS_LIMIT
+
+    # Validate and sanitize category inputs
+    categories_in = validate_category_input(categories_in)
+    categories_not_in = validate_category_input(categories_not_in)
     feed = feedgenerator.Rss201rev2Feed(
         title=FEED_TITLE,
         link=FEED_LINK,
