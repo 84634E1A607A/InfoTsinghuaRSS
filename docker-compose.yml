@@ -1,0 +1,53 @@
+services:
+  rss-feeder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: info-scraper-rss
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-8000}:8000"
+    volumes:
+      # Mount data directory for persistent SQLite database
+      - ./data:/data
+    environment:
+      # Server configuration
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+
+      # Scraping configuration
+      - SCRAPE_INTERVAL=${SCRAPE_INTERVAL:-3600}
+      - MAX_PAGES_PER_RUN=${MAX_PAGES_PER_RUN:-10}
+      - MIN_SCRAPE_INTERVAL=${MIN_SCRAPE_INTERVAL:-300}
+
+      # RSS configuration
+      - MAX_RSS_ITEMS=${MAX_RSS_ITEMS:-100}
+      - RSS_CACHE_MAX_AGE=${RSS_CACHE_MAX_AGE:-600}
+
+      # Rate limiting
+      - USER_RATE_LIMIT_PER_SECOND=${USER_RATE_LIMIT_PER_SECOND:-1}
+      - USER_RATE_LIMIT_PER_HOUR=${USER_RATE_LIMIT_PER_HOUR:-10}
+      - RATE_LIMIT_WINDOW_SECOND=${RATE_LIMIT_WINDOW_SECOND:-60}
+      - RATE_LIMIT_WINDOW_HOUR=${RATE_LIMIT_WINDOW_HOUR:-3600}
+
+      # Database path (in mounted volume)
+      - DATABASE_PATH=/data/articles.db
+      - AUTH_DATABASE_PATH=/data/auth.db
+
+      # OAuth configuration (optional, enable if needed)
+      - OAUTH_ENABLED=${OAUTH_ENABLED:-false}
+      - GITLAB_CLIENT_ID=${GITLAB_CLIENT_ID:-}
+      - GITLAB_CLIENT_SECRET=${GITLAB_CLIENT_SECRET:-}
+      - GITLAB_REDIRECT_URI=${GITLAB_REDIRECT_URI:-}
+      - OAUTH_STATE_SECRET=${OAUTH_STATE_SECRET:-}
+
+      # API metadata
+      - API_TITLE=${API_TITLE:-Tsinghua Info RSS Feed}
+      - API_VERSION=${API_VERSION:-1.0.0}
+      - API_DESCRIPTION=${API_DESCRIPTION:-RSS feed generator for Tsinghua University Info Portal}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
