@@ -23,16 +23,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Scrape interval in seconds (30 minutes)
-# SCRAPE_INTERVAL = 30 * 60
-SCRAPE_INTERVAL = 60 # Test: 1 minute
+SCRAPE_INTERVAL = 15 * 60
+# SCRAPE_INTERVAL = 60 # Test: 1 minute
 
 # Maximum pages to scrape per run
-# MAX_PAGES_PER_RUN = 10
-MAX_PAGES_PER_RUN = 30 # Test: 1 page
+MAX_PAGES_PER_RUN = 10
+# MAX_PAGES_PER_RUN = 5 # Test: 1 page
 
 # Minimum time between scrapes in seconds (10 minutes)
-# MIN_SCRAPE_INTERVAL = 10 * 60
-MIN_SCRAPE_INTERVAL = 90 # Test: 1.5 minutes
+MIN_SCRAPE_INTERVAL = 10 * 60
+# MIN_SCRAPE_INTERVAL = 90 # Test: 1.5 minutes
 
 # Maximum articles to return in RSS feed
 MAX_RSS_ITEMS = 100
