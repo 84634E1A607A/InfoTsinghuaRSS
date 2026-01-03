@@ -61,8 +61,8 @@ MIN_SCRAPE_INTERVAL = 10 * 60
 # MIN_SCRAPE_INTERVAL = 90  # Test: 1.5 minutes
 
 # Maximum pages to scrape per run
-MAX_PAGES_PER_RUN = 10
-# MAX_PAGES_PER_RUN = 5  # Test: fewer pages
+MAX_PAGES_PER_RUN = 4
+# MAX_PAGES_PER_RUN = 2  # Test: fewer pages
 
 
 # =============================================================================

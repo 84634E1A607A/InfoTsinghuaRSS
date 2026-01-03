@@ -12,7 +12,7 @@ from database import get_db_connection
 def init_auth_db() -> None:
     """Initialize authentication-related database tables."""
     with get_db_connection() as conn:
-        # Users table
+        # Users table with token column
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,52 +21,20 @@ def init_auth_db() -> None:
                 email TEXT NOT NULL,
                 name TEXT,
                 avatar_url TEXT,
+                token TEXT UNIQUE,
+                token_last_used_at INTEGER,
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL
             )
         """)
 
-        # Auth tokens table
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS auth_tokens (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                token TEXT UNIQUE NOT NULL,
-                name TEXT,
-                last_used_at INTEGER,
-                expires_at INTEGER,
-                created_at INTEGER NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        """)
-
-        # Rate limiting tracking table
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS rate_limit_tracking (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                window_start INTEGER NOT NULL,
-                request_count INTEGER NOT NULL,
-                UNIQUE(user_id, window_start),
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        """)
-
         # Create indexes
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_auth_tokens_token ON auth_tokens(token)
-        """)
-
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_auth_tokens_user ON auth_tokens(user_id)
-        """)
-
         conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_users_gitlab_id ON users(gitlab_id)
         """)
 
         conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_rate_limit_user_window ON rate_limit_tracking(user_id, window_start)
+            CREATE INDEX IF NOT EXISTS idx_users_token ON users(token)
         """)
 
         conn.commit()
@@ -130,7 +98,7 @@ def get_user_by_id(user_id: int) -> dict[str, Any] | None:
     with get_db_connection() as conn:
         cursor = conn.execute(
             """
-            SELECT id, gitlab_id, username, email, name, avatar_url, created_at, updated_at
+            SELECT id, gitlab_id, username, email, name, avatar_url, token, token_last_used_at, created_at, updated_at
             FROM users
             WHERE id = ?
             """,
@@ -153,7 +121,7 @@ def get_user_by_gitlab_id(gitlab_id: str) -> dict[str, Any] | None:
     with get_db_connection() as conn:
         cursor = conn.execute(
             """
-            SELECT id, gitlab_id, username, email, name, avatar_url, created_at, updated_at
+            SELECT id, gitlab_id, username, email, name, avatar_url, token, token_last_used_at, created_at, updated_at
             FROM users
             WHERE gitlab_id = ?
             """,
@@ -164,26 +132,15 @@ def get_user_by_gitlab_id(gitlab_id: str) -> dict[str, Any] | None:
         return dict(row) if row else None
 
 
-def create_auth_token(user_id: int, name: str | None = None) -> str:
-    """Create a new auth token for a user.
+def create_or_reset_user_token(user_id: int) -> str:
+    """Create or reset a user's auth token.
 
     Args:
         user_id: User database ID
-        name: Optional token name for user identification
 
     Returns:
         The generated token UUID
-
-    Raises:
-        ValueError: If user has too many tokens
     """
-    from config import MAX_TOKENS_PER_USER
-
-    # Check token count
-    token_count = count_user_tokens(user_id)
-    if token_count >= MAX_TOKENS_PER_USER:
-        raise ValueError(f"Maximum token limit ({MAX_TOKENS_PER_USER}) reached")
-
     # Generate token
     token = str(uuid.uuid4())
     now = int(datetime.now(timezone.utc).timestamp() * 1000)
@@ -191,14 +148,34 @@ def create_auth_token(user_id: int, name: str | None = None) -> str:
     with get_db_connection() as conn:
         conn.execute(
             """
-            INSERT INTO auth_tokens (user_id, token, name, last_used_at, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            UPDATE users
+            SET token = ?, token_last_used_at = ?, updated_at = ?
+            WHERE id = ?
             """,
-            (user_id, token, name, None, now),
+            (token, None, now, user_id),
         )
         conn.commit()
 
     return token
+
+
+def get_user_token(user_id: int) -> str | None:
+    """Get a user's token.
+
+    Args:
+        user_id: User database ID
+
+    Returns:
+        Token string or None if not set
+    """
+    with get_db_connection() as conn:
+        cursor = conn.execute(
+            "SELECT token FROM users WHERE id = ?",
+            (user_id,),
+        )
+        row = cursor.fetchone()
+
+        return row["token"] if row else None
 
 
 def validate_auth_token(token: str) -> dict[str, Any] | None:
@@ -213,13 +190,9 @@ def validate_auth_token(token: str) -> dict[str, Any] | None:
     with get_db_connection() as conn:
         cursor = conn.execute(
             """
-            SELECT
-                auth_tokens.user_id,
-                users.id, users.gitlab_id, users.username, users.email, users.name, users.avatar_url,
-                auth_tokens.last_used_at
-            FROM auth_tokens
-            JOIN users ON auth_tokens.user_id = users.id
-            WHERE auth_tokens.token = ?
+            SELECT id, gitlab_id, username, email, name, avatar_url, token_last_used_at
+            FROM users
+            WHERE token = ?
             """,
             (token,),
         )
@@ -231,13 +204,13 @@ def validate_auth_token(token: str) -> dict[str, Any] | None:
         # Update last used timestamp
         now = int(datetime.now(timezone.utc).timestamp() * 1000)
         conn.execute(
-            "UPDATE auth_tokens SET last_used_at = ? WHERE token = ?",
+            "UPDATE users SET token_last_used_at = ? WHERE token = ?",
             (now, token),
         )
         conn.commit()
 
         return {
-            "user_id": row["user_id"],
+            "user_id": row["id"],
             "gitlab_id": row["gitlab_id"],
             "username": row["username"],
             "email": row["email"],
@@ -246,176 +219,74 @@ def validate_auth_token(token: str) -> dict[str, Any] | None:
         }
 
 
-def list_user_tokens(user_id: int) -> list[dict[str, Any]]:
-    """List all tokens for a user.
+def rotate_user_token(user_id: int) -> str | None:
+    """Rotate a user's auth token.
 
     Args:
         user_id: User database ID
 
     Returns:
-        List of token dictionaries with non-sensitive info
+        New token UUID if successful, None if user not found
     """
+    # Generate new token
+    new_token = str(uuid.uuid4())
+    now = int(datetime.now(timezone.utc).timestamp() * 1000)
+
     with get_db_connection() as conn:
+        # Check user exists and get old token
         cursor = conn.execute(
-            """
-            SELECT id, token, name, last_used_at, created_at
-            FROM auth_tokens
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-            """,
+            "SELECT id FROM users WHERE id = ?",
             (user_id,),
-        )
-        rows = cursor.fetchall()
-
-        return [dict(row) for row in rows]
-
-
-def delete_auth_token(token: str, user_id: int) -> bool:
-    """Delete an auth token.
-
-    Args:
-        token: Auth token UUID
-        user_id: User ID who owns the token
-
-    Returns:
-        True if token was deleted, False otherwise
-    """
-    with get_db_connection() as conn:
-        cursor = conn.execute(
-            "DELETE FROM auth_tokens WHERE token = ? AND user_id = ?",
-            (token, user_id),
-        )
-        conn.commit()
-
-        return cursor.rowcount > 0
-
-
-def rotate_auth_token(old_token: str, user_id: int) -> str | None:
-    """Rotate an auth token (delete old, create new).
-
-    Args:
-        old_token: Old auth token UUID
-        user_id: User ID who owns the token
-
-    Returns:
-        New token UUID if successful, None otherwise
-    """
-    # Verify ownership
-    with get_db_connection() as conn:
-        cursor = conn.execute(
-            "SELECT name FROM auth_tokens WHERE token = ? AND user_id = ?",
-            (old_token, user_id),
         )
         row = cursor.fetchone()
 
         if not row:
             return None
 
-        token_name = row["name"]
-
-        # Delete old token
-        conn.execute(
-            "DELETE FROM auth_tokens WHERE token = ? AND user_id = ?",
-            (old_token, user_id),
-        )
-
-        # Create new token
-        new_token = str(uuid.uuid4())
-        now = int(datetime.now(timezone.utc).timestamp() * 1000)
-
+        # Update token
         conn.execute(
             """
-            INSERT INTO auth_tokens (user_id, token, name, last_used_at, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            UPDATE users
+            SET token = ?, token_last_used_at = ?, updated_at = ?
+            WHERE id = ?
             """,
-            (user_id, new_token, token_name, None, now),
+            (new_token, None, now, user_id),
         )
         conn.commit()
 
         return new_token
 
 
-def count_user_tokens(user_id: int) -> int:
-    """Count active tokens for a user.
+def list_user_tokens(user_id: int, limit: int = 10) -> list[dict[str, Any]]:
+    """List tokens for a user (returns max 1 token with user info).
 
     Args:
         user_id: User database ID
+        limit: Ignored, kept for compatibility
 
     Returns:
-        Number of active tokens
+        List with single token dictionary or empty list
     """
     with get_db_connection() as conn:
         cursor = conn.execute(
-            "SELECT COUNT(*) as count FROM auth_tokens WHERE user_id = ?",
+            """
+            SELECT id, token, token_last_used_at, created_at
+            FROM users
+            WHERE id = ? AND token IS NOT NULL
+            """,
             (user_id,),
         )
-        result = cursor.fetchone()
-        return result["count"]
+        row = cursor.fetchone()
 
+        if not row:
+            return []
 
-def check_rate_limit(user_id: int, window_seconds: int, max_requests: int) -> tuple[bool, int]:
-    """Check if user is within rate limit.
-
-    Args:
-        user_id: User database ID
-        window_seconds: Time window in seconds
-        max_requests: Maximum requests allowed in window
-
-    Returns:
-        Tuple of (allowed, remaining_requests)
-    """
-    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
-    window_ms = window_seconds * 1000
-    window_start = (now_ms // window_ms) * window_ms
-
-    with get_db_connection() as conn:
-        # Get or create rate limit tracking for this window
-        cursor = conn.execute(
-            """
-            INSERT OR IGNORE INTO rate_limit_tracking (user_id, window_start, request_count)
-            VALUES (?, ?, 0)
-            """,
-            (user_id, window_start),
-        )
-        conn.commit()
-
-        # Get current count
-        cursor = conn.execute(
-            """
-            SELECT request_count FROM rate_limit_tracking
-            WHERE user_id = ? AND window_start = ?
-            """,
-            (user_id, window_start),
-        )
-        result = cursor.fetchone()
-        current_count = result["request_count"]
-
-        # Check if limit exceeded
-        if current_count >= max_requests:
-            return False, 0
-
-        # Increment count
-        conn.execute(
-            """
-            UPDATE rate_limit_tracking
-            SET request_count = request_count + 1
-            WHERE user_id = ? AND window_start = ?
-            """,
-            (user_id, window_start),
-        )
-        conn.commit()
-
-        remaining = max_requests - (current_count + 1)
-        return True, remaining
-
-
-def cleanup_old_rate_limit_data() -> None:
-    """Clean up old rate limit tracking data (older than 24 hours)."""
-    cutoff_ms = int(datetime.now(timezone.utc).timestamp() * 1000) - (24 * 3600 * 1000)
-
-    with get_db_connection() as conn:
-        conn.execute(
-            "DELETE FROM rate_limit_tracking WHERE window_start < ?",
-            (cutoff_ms,),
-        )
-        conn.commit()
+        return [
+            {
+                "id": row["id"],
+                "token": row["token"],
+                "name": "API Token",
+                "last_used_at": row["token_last_used_at"],
+                "created_at": row["created_at"],
+            }
+        ]

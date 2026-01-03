@@ -11,17 +11,14 @@ from typing import Any
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from pydantic import BaseModel
 
 from auth import (
-    TokenManagement,
     get_current_user,
     get_current_user_optional,
     get_gitlab_authorization_url,
     handle_gitlab_callback,
 )
 from auth_db import (
-    check_rate_limit,
     init_auth_db,
 )
 from config import (
@@ -42,6 +39,7 @@ from config import (
     USER_RATE_LIMIT_PER_SECOND,
 )
 from database import get_last_scrape_time, get_recent_articles, init_db, set_last_scrape_time
+from rate_limit import check_rate_limit
 from rss import generate_rss, validate_category_input
 from scraper import ArticleStateEnum, InfoTsinghuaScraper
 
@@ -222,12 +220,6 @@ async def api_status(
 # =============================================================================
 
 
-class TokenCreateRequest(BaseModel):
-    """Request model for creating a token."""
-
-    name: str | None = None
-
-
 @app.get("/auth/login")
 async def login():
     """Redirect to GitLab OAuth login."""
@@ -252,8 +244,14 @@ async def callback(code: str, state: str):
 
     result = await handle_gitlab_callback(code, state)
 
-    # Create a token for the user
-    token = TokenManagement.create_token(result["user_id"], "OAuth Login Token")
+    # Get existing token for user
+    from auth_db import create_or_reset_user_token, get_user_token
+
+    token = get_user_token(result["user_id"])
+
+    if not token:
+        # Create a new token
+        token = create_or_reset_user_token(result["user_id"])
 
     # Redirect to frontend with token as query parameter
     return RedirectResponse(url=f"/?token={token}&new=true")
@@ -269,34 +267,11 @@ async def list_tokens(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
     """List all tokens for the current user."""
-    tokens = TokenManagement.list_tokens(current_user["user_id"])
+    from auth_db import list_user_tokens
 
-    # Return safe token info (partial token)
-    return [
-        {
-            "id": token["id"],
-            "token": token["token"][:8] + "...",  # Show only first 8 chars
-            "name": token["name"],
-            "last_used_at": token["last_used_at"],
-            "created_at": token["created_at"],
-        }
-        for token in tokens
-    ]
+    tokens = list_user_tokens(current_user["user_id"])
 
-
-@app.post("/auth/tokens")
-async def create_token(
-    request: TokenCreateRequest,
-    current_user: dict[str, Any] = Depends(get_current_user),
-) -> dict[str, str]:
-    """Create a new auth token."""
-    token = TokenManagement.create_token(current_user["user_id"], request.name)
-
-    return {
-        "token": token,
-        "message": "Token created successfully",
-        "instructions": "Use this token with X-API-Token header to access /rss",
-    }
+    return tokens
 
 
 @app.delete("/auth/tokens/{token}")
@@ -304,14 +279,34 @@ async def delete_token(
     token: str,
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, str]:
-    """Delete an auth token."""
-    success = TokenManagement.delete_token(token, current_user["user_id"])
+    """Delete an auth token (clear user's token)."""
 
-    if not success:
+    # Verify token belongs to user
+    user_data = get_current_user_optional(
+        Request({"type": "http", "headers": {}, "query_params": {}, "path_params": {}}),
+        token=None,
+        query_token=token,
+    )
+
+    if not user_data or user_data["user_id"] != current_user["user_id"]:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Token not found",
         )
+
+    # Clear the token by setting it to NULL
+    import datetime
+
+    from database import get_db_connection
+
+    now = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+
+    with get_db_connection() as conn:
+        conn.execute(
+            "UPDATE users SET token = NULL, token_last_used_at = NULL, updated_at = ? WHERE id = ?",
+            (now, current_user["user_id"]),
+        )
+        conn.commit()
 
     return {"message": "Token deleted successfully"}
 
@@ -322,7 +317,28 @@ async def rotate_token(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, str]:
     """Rotate an auth token (create new, delete old)."""
-    new_token = TokenManagement.rotate_token(token, current_user["user_id"])
+    from auth_db import rotate_user_token
+
+    # Verify token belongs to user
+    user_data = get_current_user_optional(
+        Request({"type": "http", "headers": {}, "query_params": {}, "path_params": {}}),
+        token=None,
+        query_token=token,
+    )
+
+    if not user_data or user_data["user_id"] != current_user["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Token not found",
+        )
+
+    new_token = rotate_user_token(current_user["user_id"])
+
+    if not new_token:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
 
     return {
         "token": new_token,

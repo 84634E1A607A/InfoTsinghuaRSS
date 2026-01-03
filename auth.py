@@ -8,17 +8,9 @@ from typing import Any
 import httpx
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import APIKeyHeader, HTTPBearer
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
 
 from auth_db import (
-    check_rate_limit,
-    cleanup_old_rate_limit_data,
-    create_auth_token,
     create_or_update_user,
-    delete_auth_token,
-    list_user_tokens,
-    rotate_auth_token,
     validate_auth_token,
 )
 from config import (
@@ -27,11 +19,7 @@ from config import (
     GITLAB_REDIRECT_URI,
     GITLAB_SCOPES,
     GITLAB_URL,
-    RATE_LIMIT_WINDOW_HOUR,
-    RATE_LIMIT_WINDOW_SECOND,
     SESSION_SECRET,
-    USER_RATE_LIMIT_PER_HOUR,
-    USER_RATE_LIMIT_PER_SECOND,
 )
 
 # Security schemes
@@ -302,150 +290,3 @@ async def get_current_user(
         )
 
     return user_data
-
-
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Middleware to enforce per-user rate limiting."""
-
-    async def dispatch(self, request: Request, call_next):
-        """Process request and apply rate limiting.
-
-        Args:
-            request: Incoming request
-            call_next: Next middleware/handler
-
-        Returns:
-            Response
-        """
-        # Get user from token if present
-        token = extract_token_from_request(request)
-        user_data = validate_auth_token(token) if token else None
-
-        remaining_second = 0
-        remaining_hour = 0
-
-        if user_data:
-            user_id = user_data["user_id"]
-
-            # Check per-second rate limit
-            allowed_second, remaining_second = check_rate_limit(
-                user_id=user_id,
-                window_seconds=RATE_LIMIT_WINDOW_SECOND,
-                max_requests=USER_RATE_LIMIT_PER_SECOND,
-            )
-
-            if not allowed_second:
-                return JSONResponse(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    content={
-                        "detail": "Rate limit exceeded: maximum 1 request per second",
-                        "limit": USER_RATE_LIMIT_PER_SECOND,
-                        "window": "1 second",
-                    },
-                )
-
-            # Check per-hour rate limit
-            allowed_hour, remaining_hour = check_rate_limit(
-                user_id=user_id,
-                window_seconds=RATE_LIMIT_WINDOW_HOUR,
-                max_requests=USER_RATE_LIMIT_PER_HOUR,
-            )
-
-            if not allowed_hour:
-                return JSONResponse(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    content={
-                        "detail": "Rate limit exceeded: maximum 10 requests per hour",
-                        "limit": USER_RATE_LIMIT_PER_HOUR,
-                        "window": "1 hour",
-                    },
-                )
-
-        # Clean up old rate limit data periodically (simplified)
-        # In production, use a background task
-        if cleanup_old_rate_limit_data.__code__.co_code != 0:  # Simple check
-            pass
-
-        response = await call_next(request)
-
-        # Add rate limit headers if authenticated
-        if user_data:
-            response.headers["X-RateLimit-Limit-Second"] = str(USER_RATE_LIMIT_PER_SECOND)
-            response.headers["X-RateLimit-Remaining-Second"] = str(remaining_second)
-            response.headers["X-RateLimit-Limit-Hour"] = str(USER_RATE_LIMIT_PER_HOUR)
-            response.headers["X-RateLimit-Remaining-Hour"] = str(remaining_hour)
-
-        return response
-
-
-class TokenManagement:
-    """Token management operations."""
-
-    @staticmethod
-    def create_token(user_id: int, name: str | None = None) -> str:
-        """Create a new auth token.
-
-        Args:
-            user_id: User database ID
-            name: Optional token name
-
-        Returns:
-            New token UUID
-
-        Raises:
-            HTTPException: If token creation fails
-        """
-        try:
-            return create_auth_token(user_id, name)
-        except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e),
-            )
-
-    @staticmethod
-    def list_tokens(user_id: int) -> list[dict[str, Any]]:
-        """List all tokens for a user.
-
-        Args:
-            user_id: User database ID
-
-        Returns:
-            List of token dictionaries
-        """
-        return list_user_tokens(user_id)
-
-    @staticmethod
-    def delete_token(token: str, user_id: int) -> bool:
-        """Delete a token.
-
-        Args:
-            token: Token UUID
-            user_id: User ID who owns the token
-
-        Returns:
-            True if deleted, False otherwise
-        """
-        return delete_auth_token(token, user_id)
-
-    @staticmethod
-    def rotate_token(token: str, user_id: int) -> str:
-        """Rotate a token (delete old, create new).
-
-        Args:
-            token: Old token UUID
-            user_id: User ID who owns the token
-
-        Returns:
-            New token UUID
-
-        Raises:
-            HTTPException: If rotation fails
-        """
-        new_token = rotate_auth_token(token, user_id)
-        if not new_token:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Token not found or does not belong to user",
-            )
-        return new_token
