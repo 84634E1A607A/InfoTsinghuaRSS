@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Response
 
-from database import get_recent_articles, init_db
+from database import get_last_scrape_time, get_recent_articles, init_db, set_last_scrape_time
 from rss import generate_rss
 from scraper import InfoTsinghuaScraper
 
@@ -23,10 +23,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Scrape interval in seconds (30 minutes)
-SCRAPE_INTERVAL = 30 * 60
+# SCRAPE_INTERVAL = 30 * 60
+SCRAPE_INTERVAL = 60 # Test: 1 minute
 
 # Maximum pages to scrape per run
-MAX_PAGES_PER_RUN = 10
+# MAX_PAGES_PER_RUN = 10
+MAX_PAGES_PER_RUN = 1 # Test: 1 page
+
+# Minimum time between scrapes in seconds (10 minutes)
+# MIN_SCRAPE_INTERVAL = 10 * 60
+MIN_SCRAPE_INTERVAL = 90 # Test: 1.5 minutes
 
 
 scheduler = AsyncIOScheduler()
@@ -34,6 +40,16 @@ scheduler = AsyncIOScheduler()
 
 async def scrape_articles() -> None:
     """Scrape articles and save to database."""
+    # Check if we scraped recently
+    last_scrape = get_last_scrape_time()
+    now = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+    if last_scrape:
+        time_since_last_scrape = (now - last_scrape) / 1000  # Convert to seconds
+        if time_since_last_scrape < MIN_SCRAPE_INTERVAL:
+            logger.info(f"Skipping scrape: last scrape was {time_since_last_scrape:.1f} seconds ago (minimum: {MIN_SCRAPE_INTERVAL}s)")
+            return
+
     logger.info("Starting scrape...")
 
     try:
@@ -62,6 +78,11 @@ async def scrape_articles() -> None:
                     continue
 
             logger.info(f"Saved {new_count} new articles, updated {updated_count} existing articles, skipped {error_count} items")
+
+            # Update last scrape time
+            scrape_end_time = int(datetime.now(timezone.utc).timestamp() * 1000)
+            set_last_scrape_time(scrape_end_time)
+            logger.info("Updated last scrape timestamp")
 
     except Exception as e:
         logger.error(f"Error during scrape: {e}", exc_info=True)

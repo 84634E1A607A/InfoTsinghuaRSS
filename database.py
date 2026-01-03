@@ -46,6 +46,13 @@ def init_db() -> None:
         """)
 
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS scrape_metadata (
+                key TEXT PRIMARY KEY,
+                value INTEGER NOT NULL
+            )
+        """)
+
+        conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_publish_time ON articles(publish_time DESC)
         """)
 
@@ -168,3 +175,34 @@ def article_exists(xxid: str) -> bool:
             (xxid,),
         )
         return cursor.fetchone() is not None
+
+
+def get_last_scrape_time() -> int | None:
+    """Get the last scrape timestamp in milliseconds.
+
+    Returns:
+        Last scrape timestamp in milliseconds, or None if never scraped
+    """
+    with get_db_connection() as conn:
+        cursor = conn.execute(
+            "SELECT value FROM scrape_metadata WHERE key = 'last_scrape_time'"
+        )
+        row = cursor.fetchone()
+        return row["value"] if row else None
+
+
+def set_last_scrape_time(timestamp_ms: int) -> None:
+    """Set the last scrape timestamp.
+
+    Args:
+        timestamp_ms: Timestamp in milliseconds
+    """
+    with get_db_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO scrape_metadata (key, value) VALUES ('last_scrape_time', ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            (timestamp_ms,),
+        )
+        conn.commit()

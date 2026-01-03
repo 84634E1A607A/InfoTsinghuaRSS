@@ -91,7 +91,7 @@ class InfoTsinghuaScraper:
             raise RuntimeError("Scraper must be used as context manager")
 
         params = {
-            "oType": "mr",
+            "oType": "xs",
             "lmid": lmid,
             "lydw": "",
             "currentPage": page,
