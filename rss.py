@@ -42,15 +42,26 @@ def strip_styles_from_html(html: str) -> str:
     return html.strip()
 
 
-def generate_rss(limit: int = 100) -> str:
+def generate_rss(
+    limit: int = 100,
+    categories_in: list[str] | None = None,
+    categories_not_in: list[str] | None = None,
+) -> str:
     """Generate RSS feed from database articles.
 
     Args:
-        limit: Maximum number of articles to include
+        limit: Maximum number of articles to include (must be positive, max 1000)
+        categories_in: List of categories to filter in (only these categories)
+        categories_not_in: List of categories to filter out (exclude these categories)
 
     Returns:
         RSS feed as XML string
     """
+    # Validate limit parameter
+    if not isinstance(limit, int) or limit < 1:
+        limit = 100
+    elif limit > 1000:
+        limit = 1000
     feed = feedgenerator.Rss201rev2Feed(
         title=FEED_TITLE,
         link=FEED_LINK,
@@ -58,16 +69,29 @@ def generate_rss(limit: int = 100) -> str:
         language="zh-CN",
     )
 
+    # Build query with filters
+    query = """
+        SELECT xxid, title, content, department, category, publish_time, url
+        FROM articles
+        WHERE 1=1
+    """
+    params: list[Any] = []
+
+    if categories_in and len(categories_in) > 0:
+        placeholders = ",".join("?" * len(categories_in))
+        query += f" AND category IN ({placeholders})"
+        params.extend(categories_in)
+
+    if categories_not_in and len(categories_not_in) > 0:
+        placeholders = ",".join("?" * len(categories_not_in))
+        query += f" AND category NOT IN ({placeholders})"
+        params.extend(categories_not_in)
+
+    query += " ORDER BY publish_time DESC LIMIT ?"
+    params.append(limit)
+
     with get_db_connection() as conn:
-        cursor = conn.execute(
-            """
-            SELECT xxid, title, content, department, category, publish_time, url
-            FROM articles
-            ORDER BY publish_time DESC
-            LIMIT ?
-            """,
-            (limit,),
-        )
+        cursor = conn.execute(query, params)
         articles = cursor.fetchall()
 
     for article in articles:

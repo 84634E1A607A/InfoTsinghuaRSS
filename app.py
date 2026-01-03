@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Query, Response
 
 from database import get_last_scrape_time, get_recent_articles, init_db, set_last_scrape_time
 from rss import generate_rss
@@ -165,9 +165,21 @@ async def root() -> dict[str, str]:
 
 
 @app.get("/rss")
-async def rss_feed() -> Response:
-    """Generate and return RSS feed."""
-    rss_xml = generate_rss(limit=MAX_RSS_ITEMS)
+async def rss_feed(
+    category_in: list[str] | None = Query(None, description="Categories to filter in (only these categories)"),
+    category_not_in: list[str] | None = Query(None, alias="not_in", description="Categories to filter out (exclude these categories)"),
+) -> Response:
+    """Generate and return RSS feed.
+
+    Query Parameters:
+    - category_in: Filter to only include articles with these categories (e.g., ?category_in=通知&category_in=公告)
+    - not_in: Exclude articles with these categories (e.g., ?not_in=招聘&not_in=讲座)
+    """
+    rss_xml = generate_rss(
+        limit=MAX_RSS_ITEMS,
+        categories_in=category_in,
+        categories_not_in=category_not_in,
+    )
 
     return Response(
         content=rss_xml,
