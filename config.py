@@ -5,6 +5,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # =============================================================================
 # Application Settings
 # =============================================================================
@@ -138,7 +143,7 @@ GITLAB_CLIENT_SECRET = os.getenv("GITLAB_CLIENT_SECRET", "")
 GITLAB_REDIRECT_URI = os.getenv("GITLAB_REDIRECT_URI", "http://localhost:8000/auth/callback")
 
 # OAuth scopes
-GITLAB_SCOPES = ["read_user"]
+GITLAB_SCOPES = ["openid", "profile", "email"]
 
 # Session secret for OAuth state
 # Generate with: python -c "import secrets; print(secrets.token_hex(32))"

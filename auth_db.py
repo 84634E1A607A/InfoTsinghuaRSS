@@ -76,12 +76,12 @@ def create_or_update_user(gitlab_user: dict[str, Any]) -> int:
     """Create or update a user from GitLab OAuth data.
 
     Args:
-        gitlab_user: Dictionary from GitLab user info endpoint with keys:
-            - id: GitLab user ID
-            - username: GitLab username
+        gitlab_user: Dictionary from GitLab userinfo endpoint with keys:
+            - sub: GitLab user ID (OpenID Connect standard)
+            - nickname: GitLab username (or preferred_username)
             - email: User email
             - name: Full name (optional)
-            - avatar_url: Avatar URL (optional)
+            - picture: Avatar URL (optional)
 
     Returns:
         User database ID
@@ -103,11 +103,11 @@ def create_or_update_user(gitlab_user: dict[str, Any]) -> int:
             RETURNING id
             """,
             (
-                str(gitlab_user["id"]),
-                gitlab_user["username"],
-                gitlab_user["email"],
+                str(gitlab_user["sub"]),
+                gitlab_user.get("nickname") or gitlab_user.get("preferred_username", ""),
+                gitlab_user.get("email", ""),
                 gitlab_user.get("name"),
-                gitlab_user.get("avatar_url"),
+                gitlab_user.get("picture"),
                 now,
                 now,
             ),

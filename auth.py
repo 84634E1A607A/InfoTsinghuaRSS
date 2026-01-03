@@ -148,7 +148,7 @@ async def exchange_gitlab_code(code: str) -> dict[str, Any]:
 
 
 async def get_gitlab_user_info(access_token: str) -> dict[str, Any]:
-    """Get user info from GitLab.
+    """Get user info from GitLab using OpenID Connect userinfo endpoint.
 
     Args:
         access_token: OAuth access token
@@ -159,16 +159,18 @@ async def get_gitlab_user_info(access_token: str) -> dict[str, Any]:
     Raises:
         HTTPException: If user info request fails
     """
-    user_url = f"{GITLAB_URL.rstrip('/')}/api/v4/user"
+    userinfo_url = f"{GITLAB_URL.rstrip('/')}/oauth/userinfo"
 
     headers = {"Authorization": f"Bearer {access_token}"}
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(user_url, headers=headers)
+        response = await client.get(userinfo_url, headers=headers)
         if response.status_code != 200:
+            print(f"Failed to fetch user info: {response.status_code}")
+            print(f"Response: {response.text}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to fetch user info",
+                detail=f"Failed to fetch user info: {response.text}",
             )
 
         return response.json()
@@ -215,6 +217,31 @@ async def handle_gitlab_callback(code: str, state: str) -> dict[str, Any]:
         "user_id": user_id,
         "redirect_path": redirect_path,
     }
+
+
+def extract_token_from_request(request: Request) -> str | None:
+    """Extract authentication token from request headers or query parameters.
+
+    Args:
+        request: FastAPI request
+
+    Returns:
+        Token string if found, None otherwise
+    """
+    # Try X-API-Token header first
+    token = request.headers.get("X-API-Token")
+
+    # Try Bearer token
+    if not token:
+        authorization = request.headers.get("Authorization")
+        if authorization and authorization.startswith("Bearer "):
+            token = authorization[7:]
+
+    # Try query parameter
+    if not token:
+        token = request.query_params.get("token")
+
+    return token
 
 
 def get_current_user_optional(
@@ -291,7 +318,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             Response
         """
         # Get user from token if present
-        user_data = get_current_user_optional(request)
+        token = extract_token_from_request(request)
+        user_data = validate_auth_token(token) if token else None
+
+        remaining_second = 0
+        remaining_hour = 0
 
         if user_data:
             user_id = user_data["user_id"]

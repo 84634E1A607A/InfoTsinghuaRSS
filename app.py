@@ -349,9 +349,6 @@ async def rss_feed(
     token: str | None = Query(
         None, description="Authentication token (can also use X-API-Token header)"
     ),
-    current_user: dict[str, Any] | None = Depends(
-        lambda r, t=None, q=None: get_current_user_optional(r, t, q)
-    ),
 ) -> Response:
     """Generate and return RSS feed (requires authentication).
 
@@ -364,9 +361,8 @@ async def rss_feed(
     - Use X-API-Token header or ?token= query parameter
     - Get a token by visiting /auth/login (GitLab OAuth)
     """
-    # Manually extract token from query for authentication
-    if not current_user and token:
-        current_user = get_current_user_optional(request, query_token=token)
+    # Extract and validate token
+    current_user = get_current_user_optional(request, token=None, query_token=token)
 
     if OAUTH_ENABLED and not current_user:
         raise HTTPException(
