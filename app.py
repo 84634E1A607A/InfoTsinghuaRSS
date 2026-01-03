@@ -121,7 +121,7 @@ async def rss_feed() -> Response:
 
     return Response(
         content=rss_xml,
-        media_type="application/rss+xml",
+        media_type="application/rss+xml; charset=utf-8",
         headers={
             "Cache-Control": "public, max-age=300",  # Cache for 5 minutes
         },
