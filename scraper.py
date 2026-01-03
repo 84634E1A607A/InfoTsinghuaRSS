@@ -4,11 +4,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import datetime, timezone
 from typing import Any
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 class InfoTsinghuaScraper:
@@ -36,7 +39,7 @@ class InfoTsinghuaScraper:
 
     def _init_session(self) -> None:
         """Initialize session by visiting the page to get cookies and CSRF token."""
-        print("Initializing session...")
+        logger.info("Initializing session...")
 
         self._session = requests.Session()
 
@@ -66,7 +69,7 @@ class InfoTsinghuaScraper:
                         self._csrf_token = cookie.value
                         break
 
-        print(f"Got {len(self._session.cookies)} cookies and CSRF token: {self._csrf_token[:20] if self._csrf_token else 'EMPTY'}...")
+        logger.info(f"Got {len(self._session.cookies)} cookies and CSRF token: {self._csrf_token[:20] if self._csrf_token else 'EMPTY'}...")
 
     def fetch_list(
         self,
@@ -231,8 +234,17 @@ class InfoTsinghuaScraper:
 
         Returns:
             True if the article was newly inserted, False if updated
+
+        Raises:
+            ValueError: If required fields are missing from the item
         """
         from database import upsert_article as db_upsert
+
+        # Validate required fields
+        required_fields = ["xxid", "bt", "fbsj", "url"]
+        missing_fields = [field for field in required_fields if field not in item or not item[field]]
+        if missing_fields:
+            raise ValueError(f"Missing required fields: {missing_fields}")
 
         article = {
             "xxid": item["xxid"],

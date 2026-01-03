@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -12,6 +13,14 @@ from fastapi import FastAPI, Response
 from database import get_recent_articles, init_db
 from rss import generate_rss
 from scraper import InfoTsinghuaScraper
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 # Scrape interval in seconds (30 minutes)
 SCRAPE_INTERVAL = 30 * 60
@@ -25,39 +34,37 @@ scheduler = AsyncIOScheduler()
 
 async def scrape_articles() -> None:
     """Scrape articles and save to database."""
-    print(f"[{datetime.now(timezone.utc).isoformat()}] Starting scrape...")
+    logger.info("Starting scrape...")
 
     try:
         with InfoTsinghuaScraper() as scraper:
             # Fetch recent articles
             items = scraper.fetch_items(lmid="all", max_pages=MAX_PAGES_PER_RUN, page_size=30)
-            print(f"Fetched {len(items)} items from API")
+            logger.info(f"Fetched {len(items)} items from API")
 
             new_count = 0
             updated_count = 0
+            error_count = 0
 
             for item in items:
-                article = {
-                    "xxid": item["xxid"],
-                    "title": item["bt"],
-                    "content": "",
-                    "department": item.get("dwmc", ""),
-                    "category": item.get("lmmc", ""),
-                    "publish_time": item["fbsj"],
-                    "url": f"{scraper.BASE_URL}{item['url']}",
-                }
+                try:
+                    # Insert or update article using scraper method
+                    is_new = scraper.upsert_article(item)
+                    if is_new:
+                        new_count += 1
+                    else:
+                        updated_count += 1
+                except (ValueError, KeyError) as e:
+                    # Skip items with missing required fields
+                    error_count += 1
+                    logger.warning(f"Skipping item due to error: {e}")
+                    logger.debug(f"Problematic item: {item}")
+                    continue
 
-                # Insert or update article
-                is_new = scraper.upsert_article(article)
-                if is_new:
-                    new_count += 1
-                else:
-                    updated_count += 1
-
-            print(f"Saved {new_count} new articles, updated {updated_count} existing articles")
+            logger.info(f"Saved {new_count} new articles, updated {updated_count} existing articles, skipped {error_count} items")
 
     except Exception as e:
-        print(f"Error during scrape: {e}")
+        logger.error(f"Error during scrape: {e}", exc_info=True)
 
 
 @asynccontextmanager
@@ -65,7 +72,7 @@ async def lifespan(app: FastAPI):
     """Manage application lifespan."""
     # Initialize database
     init_db()
-    print("Database initialized")
+    logger.info("Database initialized")
 
     # Start scheduler
     scheduler.add_job(
@@ -80,13 +87,13 @@ async def lifespan(app: FastAPI):
     await scrape_articles()
 
     scheduler.start()
-    print(f"Scheduler started, scraping every {SCRAPE_INTERVAL} seconds")
+    logger.info(f"Scheduler started, scraping every {SCRAPE_INTERVAL} seconds")
 
     yield
 
     # Shutdown
     scheduler.shutdown()
-    print("Scheduler shutdown")
+    logger.info("Scheduler shutdown")
 
 
 app = FastAPI(
