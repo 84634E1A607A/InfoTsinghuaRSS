@@ -4,7 +4,7 @@
 import sqlite3
 import requests
 
-from constants import USER_AGENT
+from config import USER_AGENT
 
 db_path = "info_rss.db"
 conn = sqlite3.connect(db_path)

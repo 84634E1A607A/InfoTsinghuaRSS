@@ -5,16 +5,18 @@ from __future__ import annotations
 import re
 import sqlite3
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import feedgenerator
+
+from config import (
+    FEED_DESCRIPTION,
+    FEED_LANGUAGE,
+    FEED_LINK,
+    FEED_TITLE,
+    MAX_RSS_ITEMS_LIMIT,
+)
 from database import get_db_connection
-
-
-FEED_TITLE = "清华大学信息门户"
-FEED_DESCRIPTION = "清华大学信息门户最新通知"
-FEED_LINK = "https://info.tsinghua.edu.cn"
 
 
 def strip_styles_from_html(html: str) -> str:
@@ -60,13 +62,13 @@ def generate_rss(
     # Validate limit parameter
     if not isinstance(limit, int) or limit < 1:
         limit = 100
-    elif limit > 1000:
-        limit = 1000
+    elif limit > MAX_RSS_ITEMS_LIMIT:
+        limit = MAX_RSS_ITEMS_LIMIT
     feed = feedgenerator.Rss201rev2Feed(
         title=FEED_TITLE,
         link=FEED_LINK,
         description=FEED_DESCRIPTION,
-        language="zh-CN",
+        language=FEED_LANGUAGE,
     )
 
     # Build query with filters

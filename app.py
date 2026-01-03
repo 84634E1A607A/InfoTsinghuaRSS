@@ -10,6 +10,18 @@ from datetime import datetime, timezone
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Query, Response
 
+from config import (
+    API_DESCRIPTION,
+    API_TITLE,
+    API_VERSION,
+    MAX_PAGES_PER_RUN,
+    MAX_RSS_ITEMS,
+    MIN_SCRAPE_INTERVAL,
+    RSS_CACHE_MAX_AGE,
+    SCRAPE_INTERVAL,
+    SERVER_HOST,
+    SERVER_PORT,
+)
 from database import get_last_scrape_time, get_recent_articles, init_db, set_last_scrape_time
 from rss import generate_rss
 from scraper import ArticleStateEnum, InfoTsinghuaScraper
@@ -21,21 +33,6 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
-
-# Scrape interval in seconds (30 minutes)
-SCRAPE_INTERVAL = 15 * 60
-# SCRAPE_INTERVAL = 60 # Test: 1 minute
-
-# Maximum pages to scrape per run
-MAX_PAGES_PER_RUN = 10
-# MAX_PAGES_PER_RUN = 5 # Test: 1 page
-
-# Minimum time between scrapes in seconds (10 minutes)
-MIN_SCRAPE_INTERVAL = 10 * 60
-# MIN_SCRAPE_INTERVAL = 90 # Test: 1.5 minutes
-
-# Maximum articles to return in RSS feed
-MAX_RSS_ITEMS = 100
 
 
 scheduler = AsyncIOScheduler()
@@ -147,9 +144,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Tsinghua Info RSS",
-    description="RSS feed for Tsinghua University Info Portal",
-    version="1.0.0",
+    title=API_TITLE,
+    description=API_DESCRIPTION,
+    version=API_VERSION,
     lifespan=lifespan,
 )
 
@@ -185,7 +182,7 @@ async def rss_feed(
         content=rss_xml,
         media_type="application/rss+xml; charset=utf-8",
         headers={
-            "Cache-Control": "public, max-age=300",  # Cache for 5 minutes
+            "Cache-Control": f"public, max-age={RSS_CACHE_MAX_AGE}",
         },
     )
 
@@ -202,4 +199,4 @@ async def health() -> dict[str, str]:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=SERVER_HOST, port=SERVER_PORT)

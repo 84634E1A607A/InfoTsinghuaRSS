@@ -10,7 +10,7 @@ from typing import Any
 import requests
 from bs4 import Tag
 
-from constants import USER_AGENT
+from config import USER_AGENT
 from parsers.base import BaseParser
 
 logger = logging.getLogger(__name__)

@@ -6,11 +6,9 @@ import hashlib
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
-
-DB_PATH = Path("info_rss.db")
+from config import DB_PATH
 
 
 @contextmanager

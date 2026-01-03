@@ -3,7 +3,7 @@
 
 import requests
 
-from constants import USER_AGENT
+from config import USER_AGENT
 
 test_url = "https://info.tsinghua.edu.cn/f/info/xxfb_fg/xnzx/template/detail?xxid=f98729acfad3ea46c0f80ebf396a0d68"
 

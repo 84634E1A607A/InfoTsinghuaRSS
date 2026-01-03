@@ -7,7 +7,7 @@ from typing import Any
 
 from bs4 import BeautifulSoup
 
-from constants import USER_AGENT
+from config import LIBRARY_ENCODINGS, USER_AGENT
 from parsers.base import BaseParser
 
 logger = logging.getLogger(__name__)
@@ -109,7 +109,7 @@ class LibraryParser(BaseParser):
 
             # Try to detect encoding from content
             # Library pages often use GBK but declare ISO-8859-1
-            encodings = ["utf-8-sig", "gbk", "gb2312", "gb18030", "utf-8"]
+            encodings = LIBRARY_ENCODINGS
 
             for encoding in encodings:
                 try:

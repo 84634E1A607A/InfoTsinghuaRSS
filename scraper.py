@@ -12,7 +12,14 @@ from typing import Any
 
 import requests
 
-from constants import USER_AGENT
+from config import (
+    BASE_URL,
+    DETAIL_URL_TEMPLATE,
+    LIST_API,
+    LIST_URL,
+    MIN_REQUEST_INTERVAL,
+    USER_AGENT,
+)
 from parsers import get_parser
 
 logger = logging.getLogger(__name__)
@@ -25,14 +32,12 @@ class ArticleStateEnum(IntEnum):
 class InfoTsinghuaScraper:
     """Scraper for Tsinghua University Info Portal."""
 
-    BASE_URL = "https://info.tsinghua.edu.cn"
-    LIST_URL = f"{BASE_URL}/f/info/xxfb_fg/xnzx/template/more?lmid=all"
-    LIST_API = f"{BASE_URL}/b/info/xxfb_fg/xnzx/template/more"
-    DETAIL_URL_TEMPLATE = f"{BASE_URL}/f/info/xxfb_fg/xnzx/template/detail?xxid={{xxid}}"
-
-    # Rate limiting: 3 requests per second
-    RATE_LIMIT = 3.0  # requests per second
-    MIN_REQUEST_INTERVAL = 1.0 / RATE_LIMIT  # seconds between requests
+    # URL endpoints (class-level for convenience)
+    BASE_URL = BASE_URL
+    LIST_URL = LIST_URL
+    LIST_API = LIST_API
+    DETAIL_URL_TEMPLATE = DETAIL_URL_TEMPLATE
+    MIN_REQUEST_INTERVAL = MIN_REQUEST_INTERVAL
 
     def __init__(self) -> None:
         """Initialize the scraper."""
