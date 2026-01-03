@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +15,31 @@ from database import get_db_connection
 FEED_TITLE = "清华大学信息门户"
 FEED_DESCRIPTION = "清华大学信息门户最新通知"
 FEED_LINK = "https://info.tsinghua.edu.cn"
+
+
+def strip_styles_from_html(html: str) -> str:
+    """Remove style attributes and style tags from HTML.
+
+    Args:
+        html: HTML string to clean
+
+    Returns:
+        HTML string with styles removed
+    """
+    # Remove style tags
+    html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+
+    # Remove style attributes from any tag
+    html = re.sub(r'\s+style\s*=\s*["\'][^"\']*["\']', '', html, flags=re.IGNORECASE)
+
+    # Remove class attributes (optional - remove if you want to keep classes)
+    # html = re.sub(r'\s+class\s*=\s*["\'][^"\']*["\']', '', html, flags=re.IGNORECASE)
+
+    # Clean up extra whitespace
+    html = re.sub(r'\s+', ' ', html)
+    html = re.sub(r'>\s+<', '><', html)
+
+    return html.strip()
 
 
 def generate_rss(limit: int = 100) -> str:
@@ -58,9 +84,10 @@ def generate_rss(limit: int = 100) -> str:
         if article_dict.get("category"):
             description_parts.append(f"<p><strong>分类:</strong> {article_dict['category']}</p>")
 
-        # Add content if available
+        # Add content if available, with styles removed
         if article_dict.get("content"):
-            description_parts.append(article_dict["content"])
+            clean_content = strip_styles_from_html(article_dict["content"])
+            description_parts.append(clean_content)
 
         description = "".join(description_parts) if description_parts else article_dict["title"]
 
