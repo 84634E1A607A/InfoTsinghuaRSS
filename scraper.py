@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 import re
 import time
@@ -266,10 +267,10 @@ class InfoTsinghuaScraper:
         # Build basic article from list item
         article = {
             "xxid": item["xxid"],
-            "title": item["bt"],
+            "title": html.unescape(item["bt"]),
             "content": "",
-            "department": item.get("dwmc", ""),
-            "category": item.get("lmmc", ""),
+            "department": html.unescape(item.get("dwmc", "")),
+            "category": html.unescape(item.get("lmmc", "")),
             "publish_time": item["fbsj"],
             "url": f"{self.BASE_URL}{item['url']}",
         }
