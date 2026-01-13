@@ -8,6 +8,7 @@ from parsers.base import BaseParser
 from parsers.career_cic import CareerCicParser
 from parsers.fallback import FallbackParser
 from parsers.internal import InternalParser
+from parsers.kybg import KybgParser
 from parsers.library import LibraryParser
 from parsers.myhome import MyhomeParser
 from parsers.simple_table import SimpleTableParser
@@ -21,6 +22,7 @@ __all__ = [
     "SimpleTableParser",
     "MyhomeParser",
     "LibraryParser",
+    "KybgParser",
     "FallbackParser",
 ]
 
@@ -28,6 +30,7 @@ __all__ = [
 PARSERS: list[type[BaseParser]] = [
     InternalParser,
     MyhomeParser,
+    KybgParser,
     CareerCicParser,
     LibraryParser,
     SimpleTableParser,

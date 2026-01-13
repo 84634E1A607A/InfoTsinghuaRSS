@@ -15,14 +15,14 @@ class SimpleTableParser(BaseParser):
     - xxbg.cic.tsinghua.edu.cn (信息办公网)
     - ghxt.cic.tsinghua.edu.cn (工会系统)
     - hq.tsinghua.edu.cn (后勤)
-    - kyybgxx.cic.tsinghua.edu.cn (科研公告)
+
+    Note: kyybgxx.cic.tsinghua.edu.cn is handled by KybgParser
     """
 
     DOMAINS = [
         "xxbg.cic.tsinghua.edu.cn",
         "ghxt.cic.tsinghua.edu.cn",
         "hq.tsinghua.edu.cn",
-        "kyybgxx.cic.tsinghua.edu.cn",
     ]
 
     @classmethod
@@ -170,7 +170,5 @@ class SimpleTableParser(BaseParser):
             result["department"] = "清华大学工会"
         elif "hq.tsinghua.edu.cn" in url:
             result["department"] = "清华大学后勤"
-        elif "kyybgxx.cic.tsinghua.edu.cn" in url:
-            result["department"] = "科研院"
 
         return result
